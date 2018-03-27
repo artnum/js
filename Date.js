@@ -73,6 +73,15 @@ DateRange.prototype.within = function(value) {
 	return false;
 }
 
+/* Check if a range contains another range */
+DateRange.prototype.contains = function(daterange) {
+	if(this.within(daterange.begin) && this.within(daterange.end)) {
+		return true;
+	}
+	return false;
+}
+
+
 /* Check if two DateRange overlap */
 DateRange.prototype.overlap = function(daterange) {
 	if(daterange instanceof DateRange) {
