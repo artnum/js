@@ -16,3 +16,8 @@ In your HTML document
 ```html
     <script src="https://artnum.ch/code/js/FILE.js"></script>
 ```
+
+See also
+--------
+
+Dojo Widgets -> https://github.com/artnum/dojo-widgets
