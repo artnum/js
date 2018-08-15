@@ -129,7 +129,6 @@ Hour.prototype.toMinStr = function () {
   var sec = this.MS / 1000
   var mins = (sec / 60) % 60
   var hours = Math.floor(sec / 3600)
-  console.log(hours, mins)
 
   if (mins < 10) {
     return hours + ':0' + mins
