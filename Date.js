@@ -117,3 +117,23 @@ DateRange.prototype.merge = function (daterange) {
 
   return null
 }
+
+var Hour = function () {
+  this.MS = 0
+  if (arguments[0] && !Number.isNaN(arguments[0])) {
+    this.MS = arguments[0] * 1000
+  }
+}
+
+Hour.prototype.toMinStr = function () {
+  var sec = this.MS / 1000
+  var mins = (sec / 60) % 60
+  var hours = Math.floor(sec / 3600)
+  console.log(hours, mins)
+
+  if (mins < 10) {
+    return hours + ':0' + mins
+  } else {
+    return hours + ':' + mins
+  }
+}
