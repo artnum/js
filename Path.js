@@ -1,15 +1,20 @@
-/* eslint-env amd, browser */
+/* eslint-env amd */
+'use strict';
+
 (function () {
-  if (typeof window.Artnum === 'undefined') {
-    this.Artnum = {}
+  /* work in browser and webworker */
+  var global = Function('return this')() // eslint-disable-line
+
+  if (typeof global.Artnum === 'undefined') {
+    global.Artnum = {}
   }
 
-  this.Artnum.Path = (function () {
+  global.Artnum.Path = (function () {
     var my = {}
 
     /* return origin directory */
     my.o = function () {
-      var o = window.location.pathname.split('/')
+      var o = global.location.pathname.split('/')
       for (var i = 0; i < o.length; i++) {
         if (o[i]) { break }
       }
@@ -20,13 +25,13 @@
     /* build url for fetch relative to first level dir, return an URL object */
     my.url = function (str) {
       var dir = this.o()
-      return new URL(window.location.origin + '/' + dir + '/' + str)
+      return new URL(global.location.origin + '/' + dir + '/' + str)
     }
 
     return my
   }())
 
   if (typeof define === 'function' && define.amd) {
-    define(['artnum/Path'], function () { return this.Artnum.Path })
+    define(['artnum/Path'], function () { return global.Artnum.Path })
   }
 }())
