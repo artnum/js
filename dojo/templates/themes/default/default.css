@@ -1,0 +1,64 @@
+@import url('https://fonts.googleapis.com/css?family=Open+Sans');
+@import url('https://use.fontawesome.com/releases/v5.0.6/css/all.css');
+
+.artnumButton {
+	font-family: "Open Sans";
+	border-radius: 6px;
+	border: solid 2px black;
+	margin: 2px;
+	padding: 4px;
+	font-size: 1.2em;
+	min-height: 20px;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	color: white;
+	cursor: pointer;
+}
+
+.artnumButton:hover {
+	border: solid 2px #888;
+	color: black !important;
+	background-color: white !important;	
+}
+
+.light .artnumButton {
+	color: black !important;
+}
+
+.light .artnumButton:hover {
+	border: solid 2px #eee;
+	color: white !important;
+	background-color: black !important;	
+}
+
+.light .artnumButton.selected {
+	border: solid 2px #eee;
+	color: white !important;
+	background-color: #333 !important;	
+}
+
+.artnumButton.tool span:before {
+	font-family: "FontAwesome";
+	content: "\f0ad\0020";
+}
+
+.artnumButton.project span:before {
+	font-family: "FontAwesome";
+	content: "\f006\0020";
+}
+
+.artnumButton.folder span:before {
+	font-family: "FontAwesome";
+	content: "\f114\0020";
+}
+
+.artnumButton.user span:before {
+	font-family: "FontAwesome";
+	content: "\f2c0\0020";
+}
+
+.artnumButton.home span:before {
+	font-family: "FontAwesome";
+	content: "\f015\0020";
+}
