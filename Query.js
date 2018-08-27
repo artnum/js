@@ -22,6 +22,12 @@
           options.credentials = 'same-origin'
         }
 
+        if (options.body) {
+          if (typeof options.body !== 'string') {
+            options.body = JSON.stringify(options.body)
+          }
+        }
+
         fetch(url, options).then(function (response) {
           if (options.method && options.method.toLowerCase() === 'head') {
             var r = /^x-artnum-(.+)$/i // eslint-disable-line
