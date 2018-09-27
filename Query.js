@@ -16,11 +16,26 @@
   global.Artnum.Query = (function () {
     var my = {}
 
+    var id = new Uint8Array(8)
+    window.crypto.getRandomValues(id)
+    id = id.join('')
+    var count = 0
+
     my.exec = function (url, options = {}) {
       return new Promise(function (resolve, reject) {
+        count++
         if (!options.credentials) {
           options.credentials = 'same-origin'
         }
+
+        if (options.headers) {
+          if (!options.headers['Content-Type']) {
+            options.headers['Content-Type'] = 'application/json; charset=utf-8'
+          }
+        } else {
+          options.headers = {'Content-Type': 'application/json; charset=utf-8'}
+        }
+        options.headers['X-Artnum-Reqid'] = id + String(count)
 
         if (options.body) {
           if (typeof options.body !== 'string') {
