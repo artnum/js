@@ -22,7 +22,7 @@
       css = document.createElement('STYLE')
       css.setAttribute('id', 'ArtnumDocCSS')
       css.innerHTML = '.docUnderlay { background-color: #666; }\n' +
-        '.docOverlay { background-color: white; position: fixed; border: 3px inset #666; position: fixed; }'
+        '.docOverlay { background-color: white; position: fixed; border: 3px inset #666; position: fixed; overflow: auto; }'
       document.head.appendChild(css)
     }())
 
@@ -117,6 +117,23 @@
           }
         })
       })
+    }
+
+    Doc.prototype.close = function () {
+      var underlay = document.getElementById('ArtnumDocUnderlay')
+      if (underlay) {
+        window.requestAnimationFrame(function () {
+          underlay.parentNode.removeChild(underlay)
+        })
+      }
+      if (doc && doc.div) {
+        var div = doc.div
+        window.requestAnimationFrame(function () {
+          div.parentNode.removeChild(div)
+        })
+      }
+
+      doc = {}
     }
 
     return Doc
