@@ -23,9 +23,17 @@
     }
 
     /* build url for fetch relative to first level dir, return an URL object */
-    my.url = function (str) {
+    my.url = function (str, options = {}) {
       var dir = this.o()
-      return new URL(global.location.origin + '/' + dir + '/' + str)
+      var url = new URL(global.location.origin + '/' + dir + '/' + str)
+
+      if (typeof options.params === 'object') {
+        for (var param in options.params) {
+          url.searchParams.set(param, options.params[param])
+        }
+      }
+
+      return url
     }
 
     return my

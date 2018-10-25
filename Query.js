@@ -55,38 +55,48 @@
 
             resolve({success: true, type: 'results', 'message': 'OK', data: results, length: 1})
           } else {
-            response.text().then(function (body) {
-              var hash = {}
-              var sign = {}
-              for (var h of response.headers) {
-                switch (h[0].toLowerCase()) {
-                  case 'x-artnum-hash': hash.value = h[1]; break
-                  case 'x-artnum-hash-algo': hash.algo = h[1]; break
-                  case 'x-artnum-sign': sign.value = h[1]; break
-                  case 'x-artnum-sign-algo': sign.algo = h[1]; break
-                }
-              }
-              var valid = true
-              if (hash.value && hash.algo) {
-                if (sjcl.hash[hash.algo]) {
-                  var value = sjcl.hash[hash.algo].hash(body)
-                  if (sjcl.codec.base64.fromBits(value) !== hash.value) {
-                    valid = false
+            switch (Math.round(response.status / 100)) {
+              default:
+              case 2:
+                response.text().then(function (body) {
+                  var hash = {}
+                  var sign = {}
+                  for (var h of response.headers) {
+                    switch (h[0].toLowerCase()) {
+                      case 'x-artnum-hash': hash.value = h[1]; break
+                      case 'x-artnum-hash-algo': hash.algo = h[1]; break
+                      case 'x-artnum-sign': sign.value = h[1]; break
+                      case 'x-artnum-sign-algo': sign.algo = h[1]; break
+                    }
                   }
-                }
-              }
+                  var valid = true
+                  if (hash.value && hash.algo) {
+                    if (sjcl.hash[hash.algo]) {
+                      var value = sjcl.hash[hash.algo].hash(body)
+                      if (sjcl.codec.base64.fromBits(value) !== hash.value) {
+                        valid = false
+                      }
+                    }
+                  }
 
-              if (sign.value && sign.algo) {
-                // Not implemented
-              }
+                  if (sign.value && sign.algo) {
+                    // Not implemented
+                  }
 
-              if (valid) {
-                resolve(JSON.parse(body))
-              } else {
-                resolve({success: false, type: 'error', message: 'Invalid data from server', data: [], length: 0})
-              }
-            })
+                  if (valid) {
+                    resolve(JSON.parse(body))
+                  } else {
+                    resolve({success: false, type: 'error', message: 'Invalid data from server', data: [], length: 0})
+                  }
+                })
+                break
+              case 5:
+                resolve({success: false, type: 'error', message: 'Server failure', data: [], length: 0})
+                break
+            }
           }
+        }, function (body) {
+          console.log(body)
         })
       })
     }
