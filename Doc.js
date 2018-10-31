@@ -56,6 +56,7 @@
 
     var Doc = function () {
       underlay(this)
+      this.eventTarget = new EventTarget()
 
       var style = ''
       if (arguments[0]) {
@@ -109,6 +110,10 @@
       })
     }
 
+    Doc.prototype.addEventListener = function (type, listener, options = {}) {
+      this.eventTarget.addEventListener(type, listener.bind(this), options)
+    }
+
     /* Inspiration from from https://stackoverflow.com/questions/7616461/generate-a-hash-from-string-in-javascript */
     Doc.prototype.hash = function (str) {
       var hash = new Uint32Array(1)
@@ -122,8 +127,8 @@
     }
 
     Doc.prototype.content = function (node) {
-      doc.id = this.hash(node.innerHTML)
-      doc.div.setAttribute('id', 'ContentID-' + doc.id)
+      this.id = this.hash(node.innerHTML)
+      doc.div.setAttribute('id', 'ContentID-' + this.id)
       window.requestAnimationFrame(function () {
         for (var current = doc.div.firstChild; current;) {
           var r = current
@@ -163,15 +168,15 @@
 
     Doc.prototype.hide = function () {
       this._style('ArtnumDocUnderlay', 'display', 'none')
-      if (doc.id) {
-        this._style('ContentID-' + doc.id, 'display', 'none')
+      if (this.id) {
+        this._style('ContentID-' + this.id, 'display', 'none')
       }
     }
 
     Doc.prototype.show = function () {
       this._style('ArtnumDocUnderlay', 'display', 'block')
-      if (doc.id) {
-        this._style('ContentID-' + doc.id, 'display', 'block')
+      if (this.id) {
+        this._style('ContentID-' + this.id, 'display', 'block')
       }
     }
 
@@ -182,15 +187,15 @@
           underlay.parentNode.removeChild(underlay)
         })
       }
-      if (doc && doc.id) {
-        var div = document.getElementById('ContentID-' + doc.id)
+      if (this.id) {
+        var div = document.getElementById('ContentID-' + this.id)
         window.requestAnimationFrame(function () {
           if (div) {
             div.parentNode.removeChild(div)
           }
         })
       }
-
+      this.eventTarget.dispatchEvent(new Event('close'))
       doc = {}
     }
 
