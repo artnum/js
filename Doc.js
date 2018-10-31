@@ -14,7 +14,6 @@
 
   global.Artnum.Doc = (function () {
     const ratio = 1.4142 // ISO paper size ratio ~= sqrt(2)
-    var doc = {}
 
     ;(function () {
       var css = document.getElementById('ArtnumDocCSS')
@@ -40,23 +39,24 @@
     }
 
     var underlay = function (theDoc) {
-      if (document.getElementById('ArtnumDocUnderlay')) { return }
       var zindex = initZindex() - 1
       var div = document.createElement('DIV')
       div.setAttribute('style', 'top: 0; bottom: 0; left: 0; right: 0; position: fixed; color: white; font-size: 32px; z-index: ' + zindex)
       div.setAttribute('class', 'docUnderlay')
-      div.setAttribute('id', 'ArtnumDocUnderlay')
 
       div.innerHTML = '<div style="position: absolute; right: 5px; top: 5px;"><i class="fas fa-window-close"></i></div>'
       div.addEventListener('click', function (event) {
         this.close()
       }.bind(theDoc))
+      theDoc.doc.underlay = div
       document.body.appendChild(div)
     }
 
     var Doc = function () {
+      this.doc = {}
       underlay(this)
       this.eventTarget = new EventTarget()
+      var doc = this.doc
 
       var style = ''
       if (arguments[0]) {
@@ -108,6 +108,7 @@
           doc.div.setAttribute('style', 'width: ' + doc.width + 'px; height: ' + doc.height + 'px;top: ' + doc.top + 'px; left: ' + doc.left + 'px; z-index: ' + zindex + ';' + doc.style)
         })
       })
+      this.doc = doc
     }
 
     Doc.prototype.addEventListener = function (type, listener, options = {}) {
@@ -128,7 +129,8 @@
 
     Doc.prototype.content = function (node) {
       this.id = this.hash(node.innerHTML)
-      doc.div.setAttribute('id', 'ContentID-' + this.id)
+      this.doc.div.setAttribute('id', 'ContentID-' + this.id)
+      var doc = this.doc
       window.requestAnimationFrame(function () {
         for (var current = doc.div.firstChild; current;) {
           var r = current
@@ -147,20 +149,26 @@
       })
     }
 
-    Doc.prototype._style = function (id, prop, val) {
-      var node = document.getElementById(id)
+    Doc.prototype._style = function (target, prop, val) {
+      var node = typeof target === 'string' ? document.getElementById(target) : target
       if (node) {
+        console.log(node)
         var style = node.getAttribute('style')
         style = style.split(';')
         var newstyle = []
+        var set = false
         for (var j = 0; j < style.length; j++) {
-          if (style[j].trim().substring(0, prop.lenght).toLower() === prop.toLower()) {
+          if (style[j].trim().substring(0, prop.length).toLowerCase() === prop.toLowerCase()) {
             if (val) {
-              newstyle.push(prop.toLower() + ': ' + val)
+              newstyle.push(prop.toLowerCase() + ': ' + val)
+              set = true
             }
           } else {
             newstyle.push(style[j])
           }
+        }
+        if (!set) {
+          style.push(prop.toLowerCase() + ': ' + val)
         }
         node.setAttribute('style', newstyle)
       }
@@ -168,35 +176,26 @@
 
     Doc.prototype.hide = function () {
       this._style('ArtnumDocUnderlay', 'display', 'none')
-      if (this.id) {
-        this._style('ContentID-' + this.id, 'display', 'none')
-      }
+      this._style(this.doc.div, 'display', 'none')
     }
 
     Doc.prototype.show = function () {
       this._style('ArtnumDocUnderlay', 'display', 'block')
-      if (this.id) {
-        this._style('ContentID-' + this.id, 'display', 'block')
-      }
+      this._style(this.doc.div, 'display', 'none')
     }
 
     Doc.prototype.close = function () {
-      var underlay = document.getElementById('ArtnumDocUnderlay')
-      if (underlay) {
-        window.requestAnimationFrame(function () {
-          underlay.parentNode.removeChild(underlay)
-        })
-      }
-      if (this.id) {
-        var div = document.getElementById('ContentID-' + this.id)
-        window.requestAnimationFrame(function () {
-          if (div) {
-            div.parentNode.removeChild(div)
-          }
-        })
-      }
+      var doc = this.doc
+      window.requestAnimationFrame(function () {
+        if (doc.underlay) {
+          doc.underlay.parentNode.removeChild(doc.underlay)
+        }
+        if (doc.div) {
+          doc.div.parentNode.removeChild(doc.div)
+        }
+      })
       this.eventTarget.dispatchEvent(new Event('close'))
-      doc = {}
+      this.doc = {}
     }
 
     return Doc
