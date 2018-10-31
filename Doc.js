@@ -39,18 +39,23 @@
       return zindex * 100
     }
 
-    var underlay = function () {
+    var underlay = function (theDoc) {
       if (document.getElementById('ArtnumDocUnderlay')) { return }
       var zindex = initZindex() - 1
       var div = document.createElement('DIV')
-      div.setAttribute('style', 'top: 0; bottom: 0; left: 0; right: 0; position: fixed; z-index: ' + zindex)
+      div.setAttribute('style', 'top: 0; bottom: 0; left: 0; right: 0; position: fixed; color: white; font-size: 32px; z-index: ' + zindex)
       div.setAttribute('class', 'docUnderlay')
       div.setAttribute('id', 'ArtnumDocUnderlay')
+
+      div.innerHTML = '<div style="position: absolute; right: 5px; top: 5px;"><i class="fas fa-window-close"></i></div>'
+      div.addEventListener('click', function (event) {
+        this.close()
+      }.bind(theDoc))
       document.body.appendChild(div)
     }
 
     var Doc = function () {
-      underlay()
+      underlay(this)
 
       var style = ''
       if (arguments[0]) {
@@ -77,7 +82,9 @@
       var div = document.createElement('DIV')
       div.setAttribute('class', 'docOverlay')
       div.setAttribute('style', 'width: ' + doc.width + 'px; height: ' + doc.height + 'px;top: ' + doc.top + 'px; left: ' + doc.left + 'px; z-index: ' + zindex + ';' + style)
-      document.body.appendChild(div)
+      window.requestAnimationFrame(function () {
+        document.body.appendChild(div)
+      })
       doc.div = div
       doc.style = style
 
@@ -96,11 +103,27 @@
 
         doc.left = Math.round((wh[0] / 2) - (doc.width / 2))
         doc.top = Math.round((wh[1] / 2) - (doc.height / 2))
-        doc.div.setAttribute('style', 'width: ' + doc.width + 'px; height: ' + doc.height + 'px;top: ' + doc.top + 'px; left: ' + doc.left + 'px; z-index: ' + zindex + ';' + doc.style)
+        window.requestAnimationFrame(function () {
+          doc.div.setAttribute('style', 'width: ' + doc.width + 'px; height: ' + doc.height + 'px;top: ' + doc.top + 'px; left: ' + doc.left + 'px; z-index: ' + zindex + ';' + doc.style)
+        })
       })
     }
 
+    /* Inspiration from from https://stackoverflow.com/questions/7616461/generate-a-hash-from-string-in-javascript */
+    Doc.prototype.hash = function (str) {
+      var hash = new Uint32Array(1)
+      hash[0] = 0
+      if (str.length === 0) return hash[0]
+      for (var i = 0; i < str.length; i++) {
+        var chr = str.charCodeAt(i)
+        hash[0] = ((hash[0] << 5) - hash[0]) + chr
+      }
+      return hash[0].toString(16)
+    }
+
     Doc.prototype.content = function (node) {
+      doc.id = this.hash(node.innerHTML)
+      doc.div.setAttribute('id', 'ContentID-' + doc.id)
       window.requestAnimationFrame(function () {
         for (var current = doc.div.firstChild; current;) {
           var r = current
@@ -119,6 +142,39 @@
       })
     }
 
+    Doc.prototype._style = function (id, prop, val) {
+      var node = document.getElementById(id)
+      if (node) {
+        var style = node.getAttribute('style')
+        style = style.split(';')
+        var newstyle = []
+        for (var j = 0; j < style.length; j++) {
+          if (style[j].trim().substring(0, prop.lenght).toLower() === prop.toLower()) {
+            if (val) {
+              newstyle.push(prop.toLower() + ': ' + val)
+            }
+          } else {
+            newstyle.push(style[j])
+          }
+        }
+        node.setAttribute('style', newstyle)
+      }
+    }
+
+    Doc.prototype.hide = function () {
+      this._style('ArtnumDocUnderlay', 'display', 'none')
+      if (doc.id) {
+        this._style('ContentID-' + doc.id, 'display', 'none')
+      }
+    }
+
+    Doc.prototype.show = function () {
+      this._style('ArtnumDocUnderlay', 'display', 'block')
+      if (doc.id) {
+        this._style('ContentID-' + doc.id, 'display', 'block')
+      }
+    }
+
     Doc.prototype.close = function () {
       var underlay = document.getElementById('ArtnumDocUnderlay')
       if (underlay) {
@@ -126,10 +182,12 @@
           underlay.parentNode.removeChild(underlay)
         })
       }
-      if (doc && doc.div) {
-        var div = doc.div
+      if (doc && doc.id) {
+        var div = document.getElementById('ContentID-' + doc.id)
         window.requestAnimationFrame(function () {
-          div.parentNode.removeChild(div)
+          if (div) {
+            div.parentNode.removeChild(div)
+          }
         })
       }
 
