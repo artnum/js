@@ -22,6 +22,12 @@
       return '/' + o[i]
     }
 
+    /* broadcast channel name */
+    my.bcname = function (id) {
+      var origin = this.o()
+      return String(origin + '/' + id).replace('//', '/')
+    }
+
     /* build url for fetch relative to first level dir, return an URL object */
     my.url = function (str, options = {}) {
       var dir = this.o()
