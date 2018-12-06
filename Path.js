@@ -10,10 +10,12 @@
   }
 
   global.Artnum.Path = (function () {
-    var my = {}
+    var Path = function (src, options = {}) {
+      return this.url(src, options)
+    }
 
     /* return origin directory */
-    my.o = function () {
+    Path.prototype.o = function () {
       var o = global.location.pathname.split('/')
       for (var i = 0; i < o.length; i++) {
         if (o[i]) { break }
@@ -23,7 +25,7 @@
     }
 
     /* build url for fetch relative to first level dir, return an URL object */
-    my.url = function (str, options = {}) {
+    Path.prototype.url = function (str, options = {}) {
       var dir = this.o()
       var url = new URL(global.location.origin + '/' + dir + '/' + str)
 
@@ -36,7 +38,7 @@
       return url
     }
 
-    return my
+    return Path
   }())
 
   if (typeof define === 'function' && define.amd) {
