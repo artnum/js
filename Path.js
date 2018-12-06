@@ -9,40 +9,34 @@
     global.Artnum = {}
   }
 
-  var origin = function () {
-    var o = global.location.pathname.split('/')
-    for (var i = 0; i < o.length; i++) {
-      if (o[i]) { break }
-    }
-
-    return '/' + o[i]
-  }
-
-  var url = function (str, options = {}) {
-    var dir = origin()
-    var url = new URL(global.location.origin + '/' + dir + '/' + str)
-
-    if (typeof options.params === 'object') {
-      for (var param in options.params) {
-        url.searchParams.set(param, options.params[param])
-      }
-    }
-
-    return url
-  }
-
   global.Artnum.Path = (function () {
-    var Path = function (src, options = {}) {
-      return url(src, options)
-    }
+    var my = {}
 
     /* return origin directory */
-    Path.prototype.o = origin
+    my.o = function () {
+      var o = global.location.pathname.split('/')
+      for (var i = 0; i < o.length; i++) {
+        if (o[i]) { break }
+      }
+
+      return '/' + o[i]
+    }
 
     /* build url for fetch relative to first level dir, return an URL object */
-    Path.prototype.url = url
+    my.url = function (str, options = {}) {
+      var dir = this.o()
+      var url = new URL(global.location.origin + '/' + dir + '/' + str)
 
-    return Path
+      if (typeof options.params === 'object') {
+        for (var param in options.params) {
+          url.searchParams.set(param, options.params[param])
+        }
+      }
+
+      return url
+    }
+
+    return my
   }())
 
   if (typeof define === 'function' && define.amd) {
