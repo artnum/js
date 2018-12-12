@@ -36,6 +36,7 @@
           options.headers = {'Content-Type': 'application/json; charset=utf-8'}
         }
         options.headers['X-Artnum-Reqid'] = id + String(count)
+        options.headers['X-Request-ID'] = id + String(count)
 
         if (options.body) {
           if (typeof options.body !== 'string') {
@@ -89,6 +90,9 @@
                     resolve({success: false, type: 'error', message: 'Invalid data from server', data: [], length: 0})
                   }
                 })
+                break
+              case 4:
+                resolve({success: false, type: 'error', message: 'Cannot access requested data', data: [], length: 0})
                 break
               case 5:
                 resolve({success: false, type: 'error', message: 'Server failure', data: [], length: 0})
