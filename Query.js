@@ -17,7 +17,7 @@
     var my = {}
 
     var id = new Uint8Array(8)
-    window.crypto.getRandomValues(id)
+    global.crypto.getRandomValues(id)
     id = id.join('')
     var count = 0
 
