@@ -27,6 +27,8 @@ define([
     type: '',
     _setTypeAttr: { node: 'nRoot', type: 'class' },
 
+    filterValue: '',
+
     selected: false,
     _setSelectedAttr: function (selected) {
       this.selected = selected

@@ -35,8 +35,13 @@
         } else {
           options.headers = {'Content-Type': 'application/json; charset=utf-8'}
         }
-        options.headers['X-Artnum-Reqid'] = id + String(count)
-        options.headers['X-Request-ID'] = id + String(count)
+
+        var requestId = id + String(count)
+        if (options.reqid) {
+          requestId = options.reqid
+        }
+        options.headers['X-Artnum-Reqid'] = requestId
+        options.headers['X-Request-ID'] = requestId
 
         if (options.body) {
           if (typeof options.body !== 'string') {

@@ -5,6 +5,7 @@ define([
   'dijit/_WidgetBase',
   'dojo/_base/lang',
   'dojo/on',
+  'dojo/dom-style',
 
   'dijit/registry',
 
@@ -15,6 +16,7 @@ define([
   _dtWidgetBase,
   djLang,
   djOn,
+  djDomStyle,
 
   dtRegistry,
 
@@ -110,15 +112,48 @@ define([
         if (arguments[1]['label']) {
           label = arguments[1]['label']
         }
+        if (arguments[1]['filterValue']) {
+          var filterValue = arguments[1]['filterValue']
+        }
       }
 
-      var btn = new Button({ label: label, value: value, type: type })
+      var btn = new Button({ label: label, value: value, type: type, filterValue: filterValue })
       this.own(btn)
       djOn(btn, 'click', djLang.hitch(this, this.eSelectBtn))
 
       var domNode = this.domNode
       window.requestAnimationFrame(function () {
         domNode.appendChild(btn.domNode)
+      })
+    },
+
+    filterWith: function (value) {
+      var btns = dtRegistry.findWidgets(this.domNode)
+      btns.forEach(function (btn) {
+        if (value === '') {
+          djDomStyle.set(btn.domNode, 'display', '')
+        } else {
+          var fval = btn.get('filterValue')
+          var hide = true
+          if (typeof fval === 'string') {
+            if (fval.toLowerCase().indexOf(value.toLowerCase()) === 0) {
+              hide = false
+            }
+          } else {
+            for (var i in fval) {
+              if (fval[i].toLowerCase().indexOf(value.toLowerCase()) === 0) {
+                hide = false
+                break
+              }
+            }
+          }
+
+          if (!hide) {
+            djDomStyle.set(btn.domNode, 'display', '')
+          } else {
+            djDomStyle.set(btn.domNode, 'display', 'none')
+          }
+        }
       })
     }
   })
