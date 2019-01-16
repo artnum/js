@@ -35,7 +35,13 @@
 
       if (typeof options.params === 'object') {
         for (var param in options.params) {
-          url.searchParams.set(param, options.params[param])
+          if (Array.isArray(options.params[param])) {
+            for (var i = 0; i < options.params[param].length; i++) {
+              url.searchParams.append(param + '[]', options.params[param][i])
+            }
+          } else {
+            url.searchParams.set(param, options.params[param])
+          }
         }
       }
 
