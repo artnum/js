@@ -96,6 +96,21 @@ function rMergeSort (array) {
   merge(aLeft, aRight, array)
 }
 
+function selectionSort (array) {
+  for (var j = 0; j < array.length - 1; j++) {
+    var min = j
+    for (var i = j; i < array.length; i++) {
+      if (array[min] > array[i]) { min = i }
+    }
+
+    if (min !== j) {
+      var t = array[min]
+      array[min] = array[j]
+      array[j] = t
+    }
+  }
+}
+
 /* 0 ... 500 */
 function random500 () {
   return Math.floor(Math.random() * 100) +
@@ -109,7 +124,7 @@ var max = 0
 var results = []
 var arrays = {}
 for (var w = 0; w <= 3; w++) {
-  for (var z = 1; z <= 25; z++) {
+  for (var z = 1; z <= 10; z++) {
     if (!arrays[z]) {
       arrays[z] = []
       for (var i = 0; i < z * 3000; i++) {
@@ -162,6 +177,17 @@ for (var w = 0; w <= 3; w++) {
       alert('Implementation error in heapSort')
     }
 
+    arr = arrays[z].slice()
+    var start = performance.now()
+    selectionSort(arr)
+    r.s = performance.now() - start
+    if (r.s > max) { max = r.s }
+    if (r.s > r.max) { r.max = r.s }
+    
+    if (carr[0] !== arr[0] || carr[Math.floor((carr.length - 1) / 2)] !== arr[Math.floor((arr.length - 1) / 2)] || carr[carr.length - 1] !== arr[arr.length - 1]) {
+      alert('Implementation error in selectionSort')
+    }
+
     if (w > 0) { // first run as warm up, discard it
       results.push(r)
     }
@@ -174,8 +200,9 @@ results.forEach(function (r) {
   var cr  = 255 - Math.round((100 % max) * (r.r / r.max))
   var ch  = 255 - Math.round((100 % max) * (r.h / r.max))
   var cj  = 255 - Math.round((100 % max) * (r.j / r.max))
+  var cs  = 255 - Math.round((100 % max) * (r.s / r.max))
   if (serie !== r.w) {
-    tbody.innerHTML += '<tr><th colspan="6">Serie ' + r.w + '</th></tr>'
+    tbody.innerHTML += '<tr><th colspan="7">Serie ' + r.w + '</th></tr>'
   }
   serie = r.w
   tbody.innerHTML +=
@@ -184,5 +211,6 @@ results.forEach(function (r) {
       r.i2 + '</td><td style="background-color: rgb(120, ' + cr  + ', 75)">' +
       r.r +  '</td><td style="background-color: rgb(120, ' + ch  + ', 75)">' +
       r.h +  '</td><td style="background-color: rgb(120, ' + cj  + ', 75)">' +
-      r.j + '</td></tr>'
+      r.j +  '</td><td style="background-color: rgb(120, ' + cs  + ', 75)">' +
+      r.s + '</td></tr>'
 })
