@@ -176,7 +176,7 @@ results.forEach(function (r) {
   serie = r.w
   tbody.innerHTML +=
       '<tr><td>' + r.z + '</td><td>' +
-      r.i1 + '</td><td style="background-color: rgb(100, ' + ci2 + ', 75)">' +
+      r.c + '</td><td style="background-color: rgb(100, ' + ci2 + ', 75)">' +
       r.i2 + '</td><td style="background-color: rgb(120, ' + cr  + ', 75)">' +
       r.r +  '</td><td style="background-color: rgb(120, ' + ch  + ', 75)">' +
       r.h +  '</td><td style="background-color: rgb(120, ' + cj  + ', 75)">' +
