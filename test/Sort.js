@@ -73,25 +73,6 @@ function merge (left, right, array, offset = 0) {
   }
 }
 
-function iMergeSort1 (array) {
-  for (var size = 1; size < array.length; size *= 2) {
-    for (var left = 0; left < array.length - 1; left += size * 2) {
-      var aLeft = array.slice(left, left + size)
-      var aRight = array.slice(left + size, Math.min(left + 2 * size, array.length))
-
-      while (aLeft.length && aRight.length) {
-        array[left++] = (aRight[0] < left[0]) ? aRight.shift() : aLeft.shift()
-      }
-      while (aLeft.length) {
-        array[left++] = aLeft.shift()
-      }
-      while (aRight.length) {
-        array[left++] = aRight.shift()
-      }
-    }
-  }
-}
-
 function iMergeSort2 (array) {
   for (var size = 1; size < array.length; size *= 2) {
     for (var left = 0; left < array.length - 1; left += size * 2) {
@@ -108,6 +89,9 @@ function rMergeSort (array) {
 
   var aLeft = array.slice(0, Math.floor(array.length / 2))
   var aRight = array.slice(Math.floor(array.length / 2))
+
+  rMergeSort(aLeft)
+  rMergeSort(aRight)
 
   merge(aLeft, aRight, array)
 }
@@ -137,11 +121,21 @@ for (var w = 0; w <= 3; w++) {
     var r = {w: w, z: z, c: arrays[z].length, i1: 0, i2: 0, r: 0, h: 0, j: 0, max: 0}
 
     arr = arrays[z].slice()
+    var jStart = performance.now()
+    arr.sort()
+    r.j = performance.now() - jStart
+    if (r.j > max) { max = r.j }
+    if (r.j > r.max) { r.max = r.j }
+    r.max = max
+
+    /* arr = arrays[z].slice()
     var iStart1 = performance.now()
     iMergeSort1(arr)
     r.i1 = performance.now() - iStart1
     if (r.i1 > max) { max = r.i1 }
     if (r.i1 > r.max) { r.max = r.i1 }
+
+    console.log('iMergeSort1', arr) */
 
     arr = arrays[z].slice()
     var iStart2 = performance.now()
@@ -164,14 +158,6 @@ for (var w = 0; w <= 3; w++) {
     if (r.h > max) { max = r.h }
     if (r.h > r.max) { r.max = r.h }
 
-    arr = arrays[z].slice()
-    var jStart = performance.now()
-    arr.sort()
-    r.j = performance.now() - jStart
-    if (r.j > max) { max = r.j }
-    if (r.j > r.max) { r.max = r.j }
-    r.max = max
-
     if (w > 0) { // first run as warm up, discard it
       results.push(r)
     }
@@ -180,18 +166,16 @@ for (var w = 0; w <= 3; w++) {
 var tbody = document.body.getElementsByTagName('TBODY')[0]
 var serie = -1
 results.forEach(function (r) {
-  var ci1 = 255 - Math.round((100 % max) * (r.i1 / r.max))
   var ci2 = 255 - Math.round((100 % max) * (r.i2 / r.max))
   var cr  = 255 - Math.round((100 % max) * (r.r / r.max))
   var ch  = 255 - Math.round((100 % max) * (r.h / r.max))
   var cj  = 255 - Math.round((100 % max) * (r.j / r.max))
   if (serie !== r.w) {
-    tbody.innerHTML += '<tr><th colspan="7">Serie ' + r.w + '</th></tr>'
+    tbody.innerHTML += '<tr><th colspan="6">Serie ' + r.w + '</th></tr>'
   }
   serie = r.w
   tbody.innerHTML +=
       '<tr><td>' + r.z + '</td><td>' +
-      r.c +  '</td><td style="background-color: rgb(100, ' + ci1 + ', 75)">' +
       r.i1 + '</td><td style="background-color: rgb(100, ' + ci2 + ', 75)">' +
       r.i2 + '</td><td style="background-color: rgb(120, ' + cr  + ', 75)">' +
       r.r +  '</td><td style="background-color: rgb(120, ' + ch  + ', 75)">' +
