@@ -1,0 +1,200 @@
+/*
+ * Time different sort algorithm for random array
+ * Demo : https://artnum.ch/code/demos/Sort.html
+ *
+ * LICENCE
+ * =======
+ *
+ * Copyright 2019 Etienne Bagnoud <etienne@artnum.ch>. All rights reserved.
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ *  - Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ *  - Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ */
+/* eslint-env browser */
+'use strict'
+
+function siftDown (array, i, max) {
+  while (i < max) {
+    var iBig = i
+    var c1 = 2 * i + 1
+    var c2 = c1 + 1
+    if (c1 < max && array[c1] > array[iBig]) { iBig = c1 }
+    if (c2 < max && array[c2] > array[iBig]) { iBig = c2 }
+    if (iBig === i) { return }
+    var tmp = array[i]
+    array[i] = array[iBig]
+    array[iBig] = tmp
+    i = iBig
+  }
+}
+
+function heapSort (array) {
+  var i = Math.floor(array.length / 2 - 1)
+  while (i >= 0) {
+    siftDown(array, i, array.length)
+    i--
+  }
+  var end = array.length - 1
+  while (end > 0) {
+    var tmp = array[end]
+    array[end] = array[0]
+    array[0] = tmp
+    siftDown(array, 0, end)
+    end--
+  }
+}
+
+function merge (left, right, array, offset = 0) {
+  while (left.length && right.length) {
+    array[offset++] = (right[0] < left[0]) ? right.shift() : left.shift()
+  }
+  while (left.length) {
+    array[offset++] = left.shift()
+  }
+  while (right.length) {
+    array[offset++] = right.shift()
+  }
+}
+
+function iMergeSort1 (array) {
+  for (var size = 1; size < array.length; size *= 2) {
+    for (var left = 0; left < array.length - 1; left += size * 2) {
+      var aLeft = array.slice(left, left + size)
+      var aRight = array.slice(left + size, Math.min(left + 2 * size, array.length))
+
+      while (aLeft.length && aRight.length) {
+        array[left++] = (aRight[0] < left[0]) ? aRight.shift() : aLeft.shift()
+      }
+      while (aLeft.length) {
+        array[left++] = aLeft.shift()
+      }
+      while (aRight.length) {
+        array[left++] = aRight.shift()
+      }
+    }
+  }
+}
+
+function iMergeSort2 (array) {
+  for (var size = 1; size < array.length; size *= 2) {
+    for (var left = 0; left < array.length - 1; left += size * 2) {
+      var aLeft = array.slice(left, left + size)
+      var aRight = array.slice(left + size, Math.min(left + 2 * size, array.length))
+
+      merge(aLeft, aRight, array, left)
+    }
+  }
+}
+
+function rMergeSort (array) {
+  if (array.length === 1) { return }
+
+  var aLeft = array.slice(0, Math.floor(array.length / 2))
+  var aRight = array.slice(Math.floor(array.length / 2))
+
+  merge(aLeft, aRight, array)
+}
+
+/* 0 ... 500 */
+function random500 () {
+  return Math.floor(Math.random() * 100) +
+    Math.floor(Math.random() * 100) +
+    Math.floor(Math.random() * 100) +
+    Math.floor(Math.random() * 100) +
+    Math.floor(Math.random() * 100)
+}
+
+var max = 0
+var results = []
+var arrays = {}
+for (var w = 0; w <= 3; w++) {
+  for (var z = 1; z <= 25; z++) {
+    if (!arrays[z]) {
+      arrays[z] = []
+      for (var i = 0; i < z * 3000; i++) {
+        arrays[z].push(random500())
+      }
+    }
+
+    var arr = []
+    var r = {w: w, z: z, c: arrays[z].length, i1: 0, i2: 0, r: 0, h: 0, j: 0, max: 0}
+
+    arr = arrays[z].slice()
+    var iStart1 = performance.now()
+    iMergeSort1(arr)
+    r.i1 = performance.now() - iStart1
+    if (r.i1 > max) { max = r.i1 }
+    if (r.i1 > r.max) { r.max = r.i1 }
+
+    arr = arrays[z].slice()
+    var iStart2 = performance.now()
+    iMergeSort2(arr)
+    r.i2 = performance.now() - iStart2
+    if (r.i2 > max) { max = r.i2 }
+    if (r.i2 > r.max) { r.max = r.i2 }
+
+    arr = arrays[z].slice()
+    var rStart = performance.now()
+    rMergeSort(arr)
+    r.r = performance.now() - rStart
+    if (r.r > max) { max = r.r }
+    if (r.r > r.max) { r.max = r.r }
+
+    arr = arrays[z].slice()
+    var hStart = performance.now()
+    heapSort(arr)
+    r.h = performance.now() - hStart
+    if (r.h > max) { max = r.h }
+    if (r.h > r.max) { r.max = r.h }
+
+    arr = arrays[z].slice()
+    var jStart = performance.now()
+    arr.sort()
+    r.j = performance.now() - jStart
+    if (r.j > max) { max = r.j }
+    if (r.j > r.max) { r.max = r.j }
+    r.max = max
+
+    if (w > 0) { // first run as warm up, discard it
+      results.push(r)
+    }
+  }
+}
+var tbody = document.body.getElementsByTagName('TBODY')[0]
+var serie = -1
+results.forEach(function (r) {
+  var ci1 = 255 - Math.round((100 % max) * (r.i1 / r.max))
+  var ci2 = 255 - Math.round((100 % max) * (r.i2 / r.max))
+  var cr  = 255 - Math.round((100 % max) * (r.r / r.max))
+  var ch  = 255 - Math.round((100 % max) * (r.h / r.max))
+  var cj  = 255 - Math.round((100 % max) * (r.j / r.max))
+  if (serie !== r.w) {
+    tbody.innerHTML += '<tr><th colspan="7">Serie ' + r.w + '</th></tr>'
+  }
+  serie = r.w
+  tbody.innerHTML +=
+      '<tr><td>' + r.z + '</td><td>' +
+      r.c +  '</td><td style="background-color: rgb(100, ' + ci1 + ', 75)">' +
+      r.i1 + '</td><td style="background-color: rgb(100, ' + ci2 + ', 75)">' +
+      r.i2 + '</td><td style="background-color: rgb(120, ' + cr  + ', 75)">' +
+      r.r +  '</td><td style="background-color: rgb(120, ' + ch  + ', 75)">' +
+      r.h +  '</td><td style="background-color: rgb(120, ' + cj  + ', 75)">' +
+      r.j + '</td></tr>'
+})
