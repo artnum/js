@@ -118,24 +118,16 @@ for (var w = 0; w <= 3; w++) {
     }
 
     var arr = []
+    var carr = []
     var r = {w: w, z: z, c: arrays[z].length, i1: 0, i2: 0, r: 0, h: 0, j: 0, max: 0}
 
-    arr = arrays[z].slice()
+    carr = arrays[z].slice()
     var jStart = performance.now()
-    arr.sort()
+    carr.sort(function (a, b) { return a - b })
     r.j = performance.now() - jStart
     if (r.j > max) { max = r.j }
     if (r.j > r.max) { r.max = r.j }
     r.max = max
-
-    /* arr = arrays[z].slice()
-    var iStart1 = performance.now()
-    iMergeSort1(arr)
-    r.i1 = performance.now() - iStart1
-    if (r.i1 > max) { max = r.i1 }
-    if (r.i1 > r.max) { r.max = r.i1 }
-
-    console.log('iMergeSort1', arr) */
 
     arr = arrays[z].slice()
     var iStart2 = performance.now()
@@ -144,6 +136,10 @@ for (var w = 0; w <= 3; w++) {
     if (r.i2 > max) { max = r.i2 }
     if (r.i2 > r.max) { r.max = r.i2 }
 
+    if (carr[0] !== arr[0] || carr[Math.floor((carr.length - 1) / 2)] !== arr[Math.floor((arr.length - 1) / 2)] || carr[carr.length - 1] !== arr[arr.length - 1]) {
+      alert('Implementation error in iMergeSort')
+    }
+
     arr = arrays[z].slice()
     var rStart = performance.now()
     rMergeSort(arr)
@@ -151,12 +147,20 @@ for (var w = 0; w <= 3; w++) {
     if (r.r > max) { max = r.r }
     if (r.r > r.max) { r.max = r.r }
 
+    if (carr[0] !== arr[0] || carr[Math.floor((carr.length - 1) / 2)] !== arr[Math.floor((arr.length - 1) / 2)] || carr[carr.length - 1] !== arr[arr.length - 1]) {
+      alert('Implementation error in rMergeSort')
+    }
+
     arr = arrays[z].slice()
     var hStart = performance.now()
     heapSort(arr)
     r.h = performance.now() - hStart
     if (r.h > max) { max = r.h }
     if (r.h > r.max) { r.max = r.h }
+
+    if (carr[0] !== arr[0] || carr[Math.floor((carr.length - 1) / 2)] !== arr[Math.floor((arr.length - 1) / 2)] || carr[carr.length - 1] !== arr[arr.length - 1]) {
+      alert('Implementation error in heapSort')
+    }
 
     if (w > 0) { // first run as warm up, discard it
       results.push(r)
