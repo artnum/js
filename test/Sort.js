@@ -123,6 +123,21 @@ function gnomeSort (array) {
   }
 }
 
+function bubbleSort (array) {
+  var sorted = false
+  while (!sorted) {
+    sorted = true
+    for (var i = 0; i < array.length - 1; i++) {
+      if (array[i] > array[i + 1]) {
+        sorted = false
+        var t = array[i + 1]
+        array[i + 1] = array[i]
+        array[i] = t
+      }
+    }
+  }
+}
+
 /* 0 ... 500 */
 function random500 () {
   return Math.floor(Math.random() * 100) +
@@ -202,6 +217,18 @@ for (var w = 0; w <= 3; w++) {
 
     arr = arrays[z].slice()
     start = performance.now()
+    bubbleSort(arr)
+    r.b = performance.now() - start
+    if (r.b > max) { max = r.b }
+    if (r.b > r.max) { r.max = r.b }
+ 
+    if (carr[0] !== arr[0] || carr[Math.floor((carr.length - 1) / 2)] !== arr[Math.floor((arr.length - 1) / 2)] || carr[carr.length - 1] !== arr[arr.length - 1]) {
+      alert('Implementation error in bubbleSort')
+    }
+
+
+    arr = arrays[z].slice()
+    start = performance.now()
     selectionSort(arr)
     r.s = performance.now() - start
     if (r.s > max) { max = r.s }
@@ -225,8 +252,9 @@ results.forEach(function (r) {
   var cj  = 255 - Math.round((255 % max) * (r.j * 7.5 / r.max))
   var cs  = 255 - Math.round((255 % max) * (r.s * 7.5 / r.max))
   var cg  = 255 - Math.round((255 % max) * (r.g * 7.5 / r.max))
+  var cb  = 255 - Math.round((255 % max) * (r.b * 7.5 / r.max))
   if (serie !== r.w) {
-    tbody.innerHTML += '<tr><th colspan="8">Serie ' + r.w + '</th></tr>'
+    tbody.innerHTML += '<tr><th colspan="9">Serie ' + r.w + '</th></tr>'
   }
   serie = r.w
   tbody.innerHTML +=
@@ -234,7 +262,8 @@ results.forEach(function (r) {
       r.c + '</td><td style="background-color: rgb(100, ' + ci2 + ', 75)">' +
       r.i2 + '</td><td style="background-color: rgb(120, ' + cr  + ', 75)">' +
       r.r +  '</td><td style="background-color: rgb(120, ' + ch  + ', 75)">' +
-      r.h +  '</td><td style="background-color: rgb(120, ' + cg  + ', 75)">' +
+      r.h +  '</td><td style="background-color: rgb(120, ' + cb  + ', 75)">' +
+      r.b +  '</td><td style="background-color: rgb(120, ' + cg  + ', 75)">' +
       r.g +  '</td><td style="background-color: rgb(120, ' + cj  + ', 75)">' +
       r.j +  '</td><td style="background-color: rgb(120, ' + cs  + ', 75)">' +
       r.s + '</td></tr>'
