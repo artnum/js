@@ -114,12 +114,10 @@ function selectionSort (array) {
 function gnomeSort (array) {
   for (var i = 0; i < array.length; i++) {
     if (i + 1 < array.length && array[i] > array[i + 1]) {
-      for (; i >= 0; i--) {
-        if (array[i] > array[i + 1]) {
-          var t = array[i + 1]
-          array[i + 1] = array[i]
-          array[i] = t
-        }
+      for (var j = i; j >= 0 && array[j] > array[j + 1]; j--) {
+        var t = array[j + 1]
+        array[j + 1] = array[j]
+        array[j] = t
       }
     }
   }
