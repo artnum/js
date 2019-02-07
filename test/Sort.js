@@ -219,12 +219,12 @@ for (var w = 0; w <= 3; w++) {
 var tbody = document.body.getElementsByTagName('TBODY')[0]
 var serie = -1
 results.forEach(function (r) {
-  var ci2 = 255 - Math.round((100 % max) * (r.i2 / r.max))
-  var cr  = 255 - Math.round((100 % max) * (r.r / r.max))
-  var ch  = 255 - Math.round((100 % max) * (r.h / r.max))
-  var cj  = 255 - Math.round((100 % max) * (r.j / r.max))
-  var cs  = 255 - Math.round((100 % max) * (r.s / r.max))
-  var cg  = 255 - Math.round((100 % max) * (r.g / r.max))
+  var ci2 = 255 - Math.round((255 % max) * (r.i2 * 7.5 / r.max))
+  var cr  = 255 - Math.round((255 % max) * (r.r * 7.5 / r.max))
+  var ch  = 255 - Math.round((255 % max) * (r.h * 7.5 / r.max))
+  var cj  = 255 - Math.round((255 % max) * (r.j * 7.5 / r.max))
+  var cs  = 255 - Math.round((255 % max) * (r.s * 7.5 / r.max))
+  var cg  = 255 - Math.round((255 % max) * (r.g * 7.5 / r.max))
   if (serie !== r.w) {
     tbody.innerHTML += '<tr><th colspan="8">Serie ' + r.w + '</th></tr>'
   }
