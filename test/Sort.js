@@ -61,28 +61,38 @@ function heapSort (array) {
   }
 }
 
-function merge (left, right, array, offset = 0) {
+function merge (left, right, array) {
+  var i = 0
   while (left.length && right.length) {
-    array[offset++] = (right[0] < left[0]) ? right.shift() : left.shift()
+    array[i++] = (right[0] < left[0]) ? right.shift() : left.shift()
   }
   while (left.length) {
-    array[offset++] = left.shift()
+    array[i++] = left.shift()
   }
   while (right.length) {
-    array[offset++] = right.shift()
+    array[i++] = right.shift()
   }
 }
 
-function iMergeSort2 (array) {
-  for (var size = 1; size < array.length; size *= 2) {
-    for (var left = 0; left < array.length - 1; left += size * 2) {
-      var aLeft = array.slice(left, left + size)
-      var aRight = array.slice(left + size, Math.min(left + 2 * size, array.length))
+function rMergeSort2 (array) {
+  if (array.length === 1) { return }
 
-      merge(aLeft, aRight, array, left)
-    }
-  }
+  var l = array.slice(0, Math.floor(array.length / 2))
+  var r = array.slice(Math.floor(array.length / 2))
+
+  rMergeSort2(l)
+  rMergeSort2(r)
+
+  merge(l, r, array)
 }
+
+var mSortBlob = new Blob([ 'function m(l, r, a) { var i=0; while (l.length && r.length) { a[i++] = (r[0] < l[0]) ? r.shift() : l.shift() }; ' +
+  'while (l.length) { a[i++] = l.shift() }; while (r.length) { a[i++] = r.shift() }; }; ' +
+  'function ms (a) { if (a.length === 1) { return }; var l = a.slice(0, Math.floor(a.length / 2)); var r = a.slice(Math.floor(a.length / 2)); ' +
+  'ms (l); ms (r); m(l, r, a) } ' +
+  'self.onmessage = function (e) { ms(e.data.array); self.postMessage({array: e.data.array}) }' ], {type: 'application/javascript'})
+var mWorker1 = new Worker(URL.createObjectURL(mSortBlob))
+var mWorker2 = new Worker(URL.createObjectURL(mSortBlob))
 
 function rMergeSort (array) {
   if (array.length === 1) { return }
@@ -90,10 +100,28 @@ function rMergeSort (array) {
   var aLeft = array.slice(0, Math.floor(array.length / 2))
   var aRight = array.slice(Math.floor(array.length / 2))
 
-  rMergeSort(aLeft)
-  rMergeSort(aRight)
+  return new Promise(function (resolve, reject) {
+    var p1 = new Promise(function (resolve, reject) {
+      mWorker1.onmessage = function (e) {
+        resolve(e.data.array)
+      }
+    })
+    var p2 = new Promise(function (resolve, reject) {
+      mWorker2.onmessage = function (e) {
+        resolve(e.data.array)
+      }
+    })
 
-  merge(aLeft, aRight, array)
+    mWorker1.postMessage({array: aLeft})
+    mWorker2.postMessage({array: aRight})
+    p1.then(function (l) {
+      p2.then(function (r) {
+        var a = new Array(l.length + r.length)
+        merge(l, r, a)
+        resolve(a)
+      })
+    })
+  })
 }
 
 function selectionSort (array) {
@@ -147,124 +175,155 @@ function random500 () {
     Math.floor(Math.random() * 100)
 }
 
-var max = 0
-var results = []
-var arrays = {}
-for (var w = 0; w <= 3; w++) {
-  for (var z = 1; z <= 10; z++) {
-    if (!arrays[z]) {
-      arrays[z] = []
-      for (var i = 0; i < z * 3000; i++) {
-        arrays[z].push(random500())
+function swap (a, idx1, idx2) {
+  var t = a[idx1]
+  a[idx1] = a[idx2]
+  a[idx2] = t
+}
+
+async function run () {
+  var max = 0
+  var results = []
+  var arrays = {}
+  for (var w = 0; w <= 5; w++) {
+    for (var z = 1; z <= 10; z++) {
+      if (!arrays[z]) {
+        arrays[z] = []
+        for (var i = 0; i < z * 3000; i++) {
+          arrays[z].push(random500())
+        }
+      }
+
+      var arr = []
+      var carr = []
+      var r = {w: w, z: z, c: arrays[z].length, i1: 0, i2: 0, r: 0, h: 0, j: 0, max: 0}
+
+      if (w === 2) {
+        heapSort(arrays[z])
+        arrays[z].reverse()
+      }
+
+      if (w === 3) {
+        heapSort(arrays[z])
+        for (var q = 1; q < arrays[z].length; q += 2) {
+          swap(arrays[z], q, q - 1)
+        }
+      }
+      if (w === 4) {
+        heapSort(arrays[z])
+        q = Math.floor(arrays[z] / 64)
+        for (; q < arrays[z].length; q += q) {
+          swap(arrays[z], q, q - 1)
+        }
+      }
+      if (w === 5) {
+        heapSort(arrays[z])
+      }
+
+      carr = arrays[z].slice()
+      var jStart = performance.now()
+      carr.sort(function (a, b) { return a - b })
+      r.j = performance.now() - jStart
+      if (r.j > max) { max = r.j }
+      if (r.j > r.max) { r.max = r.j }
+      r.max = max
+
+      arr = arrays[z].slice()
+      var iStart2 = performance.now()
+      rMergeSort2(arr)
+      r.i2 = performance.now() - iStart2
+      if (r.i2 > max) { max = r.i2 }
+      if (r.i2 > r.max) { r.max = r.i2 }
+
+      if (carr[0] !== arr[0] || carr[Math.floor((carr.length - 1) / 2)] !== arr[Math.floor((arr.length - 1) / 2)] || carr[carr.length - 1] !== arr[arr.length - 1]) {
+        alert('Implementation error in iMergeSort')
+      }
+
+      arr = arrays[z].slice()
+      var rStart = performance.now()
+      arr = await rMergeSort(arr)
+      r.r = performance.now() - rStart
+      if (r.r > max) { max = r.r }
+      if (r.r > r.max) { r.max = r.r }
+
+      if (carr[0] !== arr[0] || carr[Math.floor((carr.length - 1) / 2)] !== arr[Math.floor((arr.length - 1) / 2)] || carr[carr.length - 1] !== arr[arr.length - 1]) {
+        alert('Implementation error in rMergeSort')
+      }
+
+      arr = arrays[z].slice()
+      var hStart = performance.now()
+      heapSort(arr)
+      r.h = performance.now() - hStart
+      if (r.h > max) { max = r.h }
+      if (r.h > r.max) { r.max = r.h }
+
+      if (carr[0] !== arr[0] || carr[Math.floor((carr.length - 1) / 2)] !== arr[Math.floor((arr.length - 1) / 2)] || carr[carr.length - 1] !== arr[arr.length - 1]) {
+        alert('Implementation error in heapSort')
+      }
+
+      arr = arrays[z].slice()
+      var start = performance.now()
+      gnomeSort(arr)
+      r.g = performance.now() - start
+      if (r.g > max) { max = r.g }
+      if (r.g > r.max) { r.max = r.g }
+
+      if (carr[0] !== arr[0] || carr[Math.floor((carr.length - 1) / 2)] !== arr[Math.floor((arr.length - 1) / 2)] || carr[carr.length - 1] !== arr[arr.length - 1]) {
+        alert('Implementation error in gnomeSort')
+      }
+
+      arr = arrays[z].slice()
+      start = performance.now()
+      bubbleSort(arr)
+      r.b = performance.now() - start
+      if (r.b > max) { max = r.b }
+      if (r.b > r.max) { r.max = r.b }
+
+      if (carr[0] !== arr[0] || carr[Math.floor((carr.length - 1) / 2)] !== arr[Math.floor((arr.length - 1) / 2)] || carr[carr.length - 1] !== arr[arr.length - 1]) {
+        alert('Implementation error in bubbleSort')
+      }
+
+      arr = arrays[z].slice()
+      start = performance.now()
+      selectionSort(arr)
+      r.s = performance.now() - start
+      if (r.s > max) { max = r.s }
+      if (r.s > r.max) { r.max = r.s }
+
+      if (carr[0] !== arr[0] || carr[Math.floor((carr.length - 1) / 2)] !== arr[Math.floor((arr.length - 1) / 2)] || carr[carr.length - 1] !== arr[arr.length - 1]) {
+        alert('Implementation error in selectionSort')
+      }
+
+      if (w > 0) { // first run as warm up, discard it
+        results.push(r)
       }
     }
-
-    var arr = []
-    var carr = []
-    var r = {w: w, z: z, c: arrays[z].length, i1: 0, i2: 0, r: 0, h: 0, j: 0, max: 0}
-
-    carr = arrays[z].slice()
-    var jStart = performance.now()
-    carr.sort(function (a, b) { return a - b })
-    r.j = performance.now() - jStart
-    if (r.j > max) { max = r.j }
-    if (r.j > r.max) { r.max = r.j }
-    r.max = max
-
-    arr = arrays[z].slice()
-    var iStart2 = performance.now()
-    iMergeSort2(arr)
-    r.i2 = performance.now() - iStart2
-    if (r.i2 > max) { max = r.i2 }
-    if (r.i2 > r.max) { r.max = r.i2 }
-
-    if (carr[0] !== arr[0] || carr[Math.floor((carr.length - 1) / 2)] !== arr[Math.floor((arr.length - 1) / 2)] || carr[carr.length - 1] !== arr[arr.length - 1]) {
-      alert('Implementation error in iMergeSort')
-    }
-
-    arr = arrays[z].slice()
-    var rStart = performance.now()
-    rMergeSort(arr)
-    r.r = performance.now() - rStart
-    if (r.r > max) { max = r.r }
-    if (r.r > r.max) { r.max = r.r }
-
-    if (carr[0] !== arr[0] || carr[Math.floor((carr.length - 1) / 2)] !== arr[Math.floor((arr.length - 1) / 2)] || carr[carr.length - 1] !== arr[arr.length - 1]) {
-      alert('Implementation error in rMergeSort')
-    }
-
-    arr = arrays[z].slice()
-    var hStart = performance.now()
-    heapSort(arr)
-    r.h = performance.now() - hStart
-    if (r.h > max) { max = r.h }
-    if (r.h > r.max) { r.max = r.h }
-
-    if (carr[0] !== arr[0] || carr[Math.floor((carr.length - 1) / 2)] !== arr[Math.floor((arr.length - 1) / 2)] || carr[carr.length - 1] !== arr[arr.length - 1]) {
-      alert('Implementation error in heapSort')
-    }
-
-    arr = arrays[z].slice()
-    var start = performance.now()
-    gnomeSort(arr)
-    r.g = performance.now() - start
-    if (r.g > max) { max = r.g }
-    if (r.g > r.max) { r.max = r.g }
- 
-    if (carr[0] !== arr[0] || carr[Math.floor((carr.length - 1) / 2)] !== arr[Math.floor((arr.length - 1) / 2)] || carr[carr.length - 1] !== arr[arr.length - 1]) {
-      alert('Implementation error in gnomeSort')
-    }
-
-    arr = arrays[z].slice()
-    start = performance.now()
-    bubbleSort(arr)
-    r.b = performance.now() - start
-    if (r.b > max) { max = r.b }
-    if (r.b > r.max) { r.max = r.b }
- 
-    if (carr[0] !== arr[0] || carr[Math.floor((carr.length - 1) / 2)] !== arr[Math.floor((arr.length - 1) / 2)] || carr[carr.length - 1] !== arr[arr.length - 1]) {
-      alert('Implementation error in bubbleSort')
-    }
-
-
-    arr = arrays[z].slice()
-    start = performance.now()
-    selectionSort(arr)
-    r.s = performance.now() - start
-    if (r.s > max) { max = r.s }
-    if (r.s > r.max) { r.max = r.s }
-    
-    if (carr[0] !== arr[0] || carr[Math.floor((carr.length - 1) / 2)] !== arr[Math.floor((arr.length - 1) / 2)] || carr[carr.length - 1] !== arr[arr.length - 1]) {
-      alert('Implementation error in selectionSort')
-    }
-
-    if (w > 0) { // first run as warm up, discard it
-      results.push(r)
-    }
   }
+  var tbody = document.body.getElementsByTagName('TBODY')[0]
+  var serie = -1
+  results.forEach(function (r) {
+    var ci2 = 255 - Math.round((255 % max) * (r.i2 * 7.5 / r.max))
+    var cr  = 255 - Math.round((255 % max) * (r.r * 7.5 / r.max))
+    var ch  = 255 - Math.round((255 % max) * (r.h * 7.5 / r.max))
+    var cj  = 255 - Math.round((255 % max) * (r.j * 7.5 / r.max))
+    var cs  = 255 - Math.round((255 % max) * (r.s * 7.5 / r.max))
+    var cg  = 255 - Math.round((255 % max) * (r.g * 7.5 / r.max))
+    var cb  = 255 - Math.round((255 % max) * (r.b * 7.5 / r.max))
+    if (serie !== r.w) {
+      tbody.innerHTML += '<tr><th colspan="9">Serie ' + r.w + '</th></tr>'
+    }
+    serie = r.w
+    tbody.innerHTML +=
+        '<tr><td>' + r.z + '</td><td>' +
+        r.c + '</td><td style="background-color: rgb(100, ' + ci2 + ', 75)">' +
+        r.i2 + '</td><td style="background-color: rgb(120, ' + cr  + ', 75)">' +
+        r.r +  '</td><td style="background-color: rgb(120, ' + ch  + ', 75)">' +
+        r.h +  '</td><td style="background-color: rgb(120, ' + cb  + ', 75)">' +
+        r.b +  '</td><td style="background-color: rgb(120, ' + cg  + ', 75)">' +
+        r.g +  '</td><td style="background-color: rgb(120, ' + cj  + ', 75)">' +
+        r.j +  '</td><td style="background-color: rgb(120, ' + cs  + ', 75)">' +
+        r.s + '</td></tr>'
+  })
 }
-var tbody = document.body.getElementsByTagName('TBODY')[0]
-var serie = -1
-results.forEach(function (r) {
-  var ci2 = 255 - Math.round((255 % max) * (r.i2 * 7.5 / r.max))
-  var cr  = 255 - Math.round((255 % max) * (r.r * 7.5 / r.max))
-  var ch  = 255 - Math.round((255 % max) * (r.h * 7.5 / r.max))
-  var cj  = 255 - Math.round((255 % max) * (r.j * 7.5 / r.max))
-  var cs  = 255 - Math.round((255 % max) * (r.s * 7.5 / r.max))
-  var cg  = 255 - Math.round((255 % max) * (r.g * 7.5 / r.max))
-  var cb  = 255 - Math.round((255 % max) * (r.b * 7.5 / r.max))
-  if (serie !== r.w) {
-    tbody.innerHTML += '<tr><th colspan="9">Serie ' + r.w + '</th></tr>'
-  }
-  serie = r.w
-  tbody.innerHTML +=
-      '<tr><td>' + r.z + '</td><td>' +
-      r.c + '</td><td style="background-color: rgb(100, ' + ci2 + ', 75)">' +
-      r.i2 + '</td><td style="background-color: rgb(120, ' + cr  + ', 75)">' +
-      r.r +  '</td><td style="background-color: rgb(120, ' + ch  + ', 75)">' +
-      r.h +  '</td><td style="background-color: rgb(120, ' + cb  + ', 75)">' +
-      r.b +  '</td><td style="background-color: rgb(120, ' + cg  + ', 75)">' +
-      r.g +  '</td><td style="background-color: rgb(120, ' + cj  + ', 75)">' +
-      r.j +  '</td><td style="background-color: rgb(120, ' + cs  + ', 75)">' +
-      r.s + '</td></tr>'
-})
+
+run()
