@@ -86,19 +86,19 @@ function rMergeSort2 (array) {
   merge(l, r, array)
 }
 
-var mSortBlob = new Blob([ 'function m(l, r, a) { var i=0; while (l.length && r.length) { a[i++] = (r[0] < l[0]) ? r.shift() : l.shift() }; ' +
-  'while (l.length) { a[i++] = l.shift() }; while (r.length) { a[i++] = r.shift() }; }; ' +
+var mSortBlob = new Blob([ 'function m(l, r, a) { var i=0; var iR=0; var iL=0; while (iL < l.length && iR < r.length) { a[i++] = (r[iR] < l[iL]) ? r[iR++] : l[iL++] }; ' +
+  'while (iL < l.length) { a[i++] = l[iL++] }; while (iR < r.length) { a[i++] = r[iR++] }; }; ' +
   'function ms (a) { if (a.length === 1) { return }; var l = a.slice(0, Math.floor(a.length / 2)); var r = a.slice(Math.floor(a.length / 2)); ' +
   'ms (l); ms (r); m(l, r, a) } ' +
-  'self.onmessage = function (e) { ms(e.data.array); self.postMessage({array: e.data.array}) }' ], {type: 'application/javascript'})
+      'self.onmessage = function (msg) { var time = performance.now(); ms(msg.data.array); time = performance.now() - time;  self.postMessage({time: time, array: msg.data.array}, [msg.data.array.buffer]) }' ], {type: 'application/javascript'})
 var mWorker1 = new Worker(URL.createObjectURL(mSortBlob))
 var mWorker2 = new Worker(URL.createObjectURL(mSortBlob))
 
 function rMergeSort (array) {
   if (array.length === 1) { return }
 
-  var aLeft = array.slice(0, Math.floor(array.length / 2))
-  var aRight = array.slice(Math.floor(array.length / 2))
+  var aLeft = new Int16Array(array.slice(0, Math.floor(array.length / 2)))
+  var aRight = new Int16Array(array.slice(Math.floor(array.length / 2)))
 
   return new Promise(function (resolve, reject) {
     var p1 = new Promise(function (resolve, reject) {
@@ -112,13 +112,23 @@ function rMergeSort (array) {
       }
     })
 
-    mWorker1.postMessage({array: aLeft})
-    mWorker2.postMessage({array: aRight})
+    mWorker1.postMessage({array: aLeft}, [aLeft.buffer])
+    mWorker2.postMessage({array: aRight}, [aRight.buffer])
     p1.then(function (l) {
       p2.then(function (r) {
-        var a = new Array(l.length + r.length)
-        merge(l, r, a)
-        resolve(a)
+        var i = 0
+        var iR = 0
+        var iL = 0
+        while (iR < l.length && iL < r.length) {
+          array[i++] = (r[iR] < l[iL]) ? r[iR++] : l[iL++]
+        }
+        while (iL < l.length) {
+          array[i++] = l[iL++]
+        }
+        while (iR < r.length) {
+          array[i++] = r[iR++]
+        }
+        resolve(array)
       })
     })
   })
