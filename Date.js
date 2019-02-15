@@ -31,8 +31,16 @@ Date.prototype.hours = function () {
   return this.getHours() + (this.getMinutes() / 60) + (this.getSeconds() / 60 / 60)
 }
 
-Date.prototype.shortDate = function () {
-  return this.getDate() + '.' + (this.getMonth() + 1)
+Date.prototype.shortDate = function (prefix = false) {
+  if (!prefix) {
+    return this.getDate() + '.' + (this.getMonth() + 1)
+  } else {
+    var m = this.getMonth() + 1
+    var d = this.getDate()
+    if (m < 10) { m = `0${m}` }
+    if (d < 10) { d = `0${d}` }
+    return `${d}.${m}`
+  }
 }
 
 Date.prototype.fullDate = function () {
