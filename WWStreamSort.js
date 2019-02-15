@@ -208,18 +208,24 @@ self.onmessage = async function (msg) {
           reverse = true
         }
       }
+      self.postMessage({op: 'initialized'})
       inittime += performance.now() - start
       break
     case 'add':
       start = performance.now()
+      var opts = {}
       if (!inited) { self.postMessage({op: 'error', errstr: 'Not initialized'}); return }
       if (!msg.data.args || !msg.data.args.value) { self.postMessage({op: 'error', errstr: 'Invalid argument'}); return }
+
+      if (msg.data.id) {
+        opts.id = msg.data.id
+      }
 
       switch (algo) {
         case 'heap':
           data.unshift(msg.data.args)
           sift(Math.floor(data.length / 2), data.length)
-          self.postMessage({op: 'ready', size: data.length})
+          self.postMessage(Object.assign({op: 'ready', size: data.length}, opts))
           break
         case 'merge':
           data.push(msg.data.args)
@@ -230,7 +236,7 @@ self.onmessage = async function (msg) {
               data[data.length - 1] = t
             }
           }
-          self.postMessage({op: 'ready', size: data.length})
+          self.postMessage(Object.assign({op: 'ready', size: data.length}, opts))
           break
       }
       addtime += performance.now() - start
