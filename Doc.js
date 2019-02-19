@@ -41,7 +41,8 @@
     var underlay = function (theDoc) {
       var zindex = initZindex() - 1
       var div = document.createElement('DIV')
-      div.setAttribute('style', 'top: 0; bottom: 0; left: 0; right: 0; position: fixed; color: white; font-size: 32px; z-index: ' + zindex)
+
+      div.setAttribute('style', `top: 0; bottom: 0; left: 0; width: ${theDoc.doc.width + 80}; position: fixed; color: white; font-size: 32px; z-index: ${zindex}`)
       div.setAttribute('class', 'docUnderlay')
 
       div.innerHTML = '<div style="position: absolute; right: 5px; top: 5px;"><i class="fas fa-window-close"></i></div>'
@@ -54,14 +55,17 @@
 
     var Doc = function () {
       this.doc = {}
-      underlay(this)
       this.eventTarget = new EventTarget()
+      var maxwidth = -1
       var doc = this.doc
-
       var style = ''
+
       if (arguments[0]) {
         if (arguments[0].style) {
           style = arguments[0].style
+        }
+        if (arguments[0].width) {
+          maxwidth = arguments[0].width
         }
       }
 
@@ -75,11 +79,16 @@
       }
 
       doc.height -= 60
-      doc.width = Math.round(doc.height * ratio)
+      if (maxwidth > 0) {
+        doc.width = maxwidth
+      } else {
+        doc.width = Math.round(doc.height * ratio)
+      }
 
-      doc.left = Math.round((wh[0] / 2) - (doc.width / 2))
-      doc.top = Math.round((wh[1] / 2) - (doc.height / 2))
+      doc.left = 20
+      doc.top = 20
 
+      underlay(this)
       var div = document.createElement('DIV')
       div.setAttribute('class', 'docOverlay')
       div.setAttribute('style', 'width: ' + doc.width + 'px; height: ' + doc.height + 'px;top: ' + doc.top + 'px; left: ' + doc.left + 'px; z-index: ' + zindex + ';' + style)
@@ -152,7 +161,6 @@
     Doc.prototype._style = function (target, prop, val) {
       var node = typeof target === 'string' ? document.getElementById(target) : target
       if (node) {
-        console.log(node)
         var style = node.getAttribute('style')
         style = style.split(';')
         var newstyle = []
@@ -202,6 +210,6 @@
   }())
 
   if (typeof define === 'function' && define.amd) {
-    define(['artnum/Doc'], function () { return global.Artnum.Doc })
+    define(['artnumd/Doc'], function () { return global.Artnum.Doc })
   }
 }())
