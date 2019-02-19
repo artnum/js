@@ -109,10 +109,14 @@
         }
 
         doc.height -= 60
-        doc.width = Math.round(doc.height * ratio)
+        if (maxwidth > 0) {
+          doc.width = maxwidth
+        } else {
+          doc.width = Math.round(doc.height * ratio)
+        }
 
-        doc.left = Math.round((wh[0] / 2) - (doc.width / 2))
-        doc.top = Math.round((wh[1] / 2) - (doc.height / 2))
+        doc.left = 20
+        doc.top = 20
         window.requestAnimationFrame(function () {
           doc.div.setAttribute('style', 'width: ' + doc.width + 'px; height: ' + doc.height + 'px;top: ' + doc.top + 'px; left: ' + doc.left + 'px; z-index: ' + zindex + ';' + doc.style)
         })
