@@ -20,7 +20,7 @@
       if (css) { return }
       css = document.createElement('STYLE')
       css.setAttribute('id', 'ArtnumDocCSS')
-      css.innerHTML = '.docUnderlay { background-color: #666; }\n' +
+      css.innerHTML = '.docUnderlay { background-color: rgba(120, 120, 120, 0.3); }\n' +
         '.docOverlay { background-color: white; position: fixed; border: 3px inset #666; position: fixed; overflow: auto; }'
       document.head.appendChild(css)
     }())
@@ -42,7 +42,7 @@
       var zindex = initZindex() - 1
       var div = document.createElement('DIV')
 
-      div.setAttribute('style', `top: 0; bottom: 0; left: 0; width: ${theDoc.doc.width + 80}; position: fixed; color: white; font-size: 32px; z-index: ${zindex}`)
+      div.setAttribute('style', `top: 0; bottom: 0; left: 0; width: ${theDoc.doc.width + theDoc.doc.left + 6}; position: fixed; color: white; font-size: 32px; z-index: ${zindex}`)
       div.setAttribute('class', 'docUnderlay')
 
       div.innerHTML = '<div style="position: absolute; right: 5px; top: 5px;"><i class="fas fa-window-close"></i></div>'
@@ -85,8 +85,8 @@
         doc.width = Math.round(doc.height * ratio)
       }
 
-      doc.left = 20
-      doc.top = 20
+      doc.left = 40
+      doc.top = 40
 
       underlay(this)
       var div = document.createElement('DIV')
@@ -115,8 +115,8 @@
           doc.width = Math.round(doc.height * ratio)
         }
 
-        doc.left = 20
-        doc.top = 20
+        doc.left = 40
+        doc.top = 40
         window.requestAnimationFrame(function () {
           doc.div.setAttribute('style', 'width: ' + doc.width + 'px; height: ' + doc.height + 'px;top: ' + doc.top + 'px; left: ' + doc.left + 'px; z-index: ' + zindex + ';' + doc.style)
         })
