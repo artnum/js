@@ -210,6 +210,6 @@
   }())
 
   if (typeof define === 'function' && define.amd) {
-    define(['artnumd/Doc'], function () { return global.Artnum.Doc })
+    define(['artnum/Doc'], function () { return global.Artnum.Doc })
   }
 }())
