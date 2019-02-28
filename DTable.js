@@ -31,7 +31,8 @@
       attribute: 'data-attribute',
       entryId: 'data-entry-id',
       id: 'data-id',
-      refresh: 'data-refresh'
+      refresh: 'data-refresh',
+      condition: 'data-condition'
     }
 
     var dateValue = function (date) {
@@ -381,6 +382,79 @@
       }
     }
 
+    var getVar = function (entry, varname) {
+      var v = varname.substr(1).split('.')
+      var e = entry
+      for (var i = 0; i < v.length; i++) {
+        if (e[v[i]]) {
+          e = e[v[i]]
+        } else {
+          e = null
+          break
+        }
+      }
+      return e
+    }
+
+    var parseSub = function (subquery) {
+      var sub = subquery.split(';')
+      if (sub.length > 0) {
+        var url = sub[0].substr(1)
+        var val = []
+        for (var i = 1; i < sub.length; i++) {
+          val.push(sub[i])
+        }
+
+        return {url: url, val: val}
+      } else {
+        return {url: subquery.substr(1), val: null}
+      }
+
+      return null
+    }
+
+    var getSub = async function (subquery, vars, entry) {
+      var sub = null
+      if (subquery[0] === '@') {
+        sub = parseSub(subquery)
+      }
+
+      if (sub) {
+        for (var i = 0; i < vars.length; i++) {
+          var v = getVar(entry, vars[i])
+          if (v) {
+            sub.url = sub.url.replace(vars[i], v)
+          } else {
+            sub = null
+            break
+          }
+        }
+        if (sub) {
+          var val = await Artnum.Query.exec(Artnum.Path.url(sub.url))
+          if (val.success && val.length > 0) {
+            if (!sub.val) {
+              return String(val.data[0])
+            } else {
+              var vals = []
+              sub.val.forEach(function (v) {
+                var _v = getVar(val.data[0], '_' + v)
+                if (_v) {
+                  vals.push(_v)
+                }
+              })
+              if (vals.length === 1) {
+                return vals[0]
+              } else if (vals.length > 1) {
+                return vals.join(' ')
+              }
+            }
+          }
+        }
+      }
+
+      return null
+    }
+
     DTable.prototype.processResult = function (result) {
       if (result.success && result.length > 0) {
         for (var e = 0; e < result.data.length; e++) {
@@ -391,6 +465,37 @@
             var row = []
             for (var i = 0; i < this.Column.length; i++) {
               var value = null
+              if (this.Column[i].condition) {
+                var condition = this.Column[i].condition
+                if (condition.values[0] && condition.values[1]) {
+                  var val = [null, null]
+                  for (var x = 0; x < condition.values.length; x++) {
+                    var tmp = condition.values[x]
+                    if (tmp.subquery) {
+                      val[x] = await getSub(tmp.subquery, tmp.vars, entry)
+                    } else {
+                      val[x] = getVar(entry, tmp.vars[0])
+                    }
+                  }
+
+                  if (val[0] && val[1]) {
+                    var res = false
+                    switch (condition.operation) {
+                      case 'lte': res = val[0] <= val[1]; break
+                      case 'gte': res = val[0] >= val[1]; break
+                      case 'ne': res = val[0] !== val[1]; break
+                      case 'eq': res = val[0] === val[1]; break
+                      case 'lt': res = val[0] < val[1]; break
+                      case 'gt': res = val[0] > val[1]; break
+                    }
+
+                    if (!res) {
+                      console.log(entry)
+                      continue
+                    }
+                  }
+                }
+              }
               if (this.Column[i].subquery !== null) {
                 if (!subresults[this.Column[i].subquery]) {
                   var url = this.Subquery[this.Column[i].subquery].ref.substr(1)
@@ -554,6 +659,53 @@
         } else {
           this.Column[i] = {attr: th[i].innerText, subquery: null, vars: [], type: 'text', sortName: sortName}
         }
+
+        if (th[i].getAttribute(names.condition)) {
+          attr = th[i].getAttribute(names.condition)
+          attr = attr.split(' ', 3)
+
+          var op = null
+          if (attr.length === 3) {
+            switch (attr[2].toLowerCase()) {
+              case 'lt':
+              case 'gt':
+              case 'eq':
+              case 'ne':
+              case 'lte':
+              case 'gte':
+                op = attr[2].toLowerCase()
+                break
+            }
+          }
+
+          if (op) {
+            var cond = {operation: op, values: [null, null], type: 'text'}
+            for (var k = 0; k < 2; k++) {
+              at = attr[k].split(':', 2)
+              if (at.length < 2 && k > 0 && !cond.type) {
+                cond.type = 'text'
+              } else if (at.length > 1) {
+                cond.type = at[1]
+              }
+
+              attr[k] = at[0]
+              if (attr[k][0] === '@') {
+                vars = attr[k].match(/(\$[a-zA-Z0-9._\-:]+)+/g)
+                cond.values[k] = {subquery: attr[k], vars: vars}
+              } else {
+                if (attr[k][0] === '$') {
+                  cond.values[k] = {subquery: null, vars: [attr[k]]}
+                } else {
+                  cond = null
+                }
+              }
+            }
+            if (cond) {
+              this.Column[i].condition = cond
+            }
+          }
+        }
+        console.log(this.Column[i])
       }
     }
 
