@@ -177,7 +177,7 @@
     /* Not the fastest way of sorting (for the same dataset I could gain some 100ms) BUT :
      *  - Fast enough
      *  - Can sort a table while TR are added
-     *  - Is multivel sort (the 100ms gain was without that)
+     *  - Is multilevel sort (the 100ms gain was without that)
      *  - Use heap sort which is n log n
      *  - After test, heap sort is faster than built-in Array.sort on Chrome and nearly as fast as Firefox's Array.sort
      */
@@ -205,6 +205,8 @@
       this.Thead = null
       this.Tbody = null
       this.EntryId = 'id'
+      this.searchParams = {}
+      this.refreshParams = {}
 
       if (arguments[0]) {
         if (arguments[0].prefix) {
@@ -235,7 +237,7 @@
       }
 
       if (this.Table.getAttribute(names.refresh)) {
-        this.refresh(toJSON(this.Table.getAttribute(names.refresh)))
+        this.refreshParams = toJSON(this.Table.getAttribute(names.refresh))
       }
 
       if (arguments[0].head) {
@@ -355,7 +357,8 @@
       return true
     }
 
-    DTable.prototype.refresh = function (params) {
+    DTable.prototype.refresh = function () {
+      var params = this.refreshParams
       if (params.indicator) {
         if (params.indicator.name) {
           this.Modified = params.indicator.name
@@ -366,7 +369,7 @@
           this.ModifiedInt = false
         }
 
-        var qparams = {}
+        var qparams = Object.assign({}, this.searchParams)
         if (params.parameters) {
           qparams = Object.assign(qparams, params.parameters)
         }
@@ -376,10 +379,32 @@
             if (result.success && result.length > 0) {
               this.processResult(result)
             }
-            this.refresh(params)
+            this.refresh()
           }.bind(this))
         }
       }
+    }
+
+    var getVar2 = function (entry, varname) {
+      var values = []
+      if (varname[0] === '$') { varname = varname.substr(1) }
+      var elements = varname.split('.')
+      while (true) {
+        var element = elements.shift()
+        if (!element) { break }
+        if (!entry[element]) { break }
+        if (Array.isArray(entry[element])) {
+          entry[element].forEach(function (subentry) {
+            values = values.concat(getVar2(subentry, elements.join('.')))
+          })
+        } else if (typeof entry[element] === 'object') {
+          entry = entry[element]
+        } else {
+          values.push(entry[element])
+        }
+      }
+
+      return values
     }
 
     var getVar = function (entry, varname) {
@@ -409,8 +434,28 @@
       } else {
         return {url: subquery.substr(1), val: null}
       }
+    }
 
-      return null
+    var getQueries = function (url, vars, idx) {
+      var queries = []
+      var q = url
+      if (!vars[idx]) { return queries }
+      for (var k = 0; k < vars[idx].val.length; k++) {
+        q = url.replace(vars[idx].name, vars[idx].val[k])
+        for (var i = 0; i < vars.length; i++) {
+          if (idx !== i) {
+            for (var j = 0; j < vars[i].val.length; j++) {
+              q = q.replace(vars[i].name, vars[i].val[j])
+            }
+          }
+        }
+        queries.push(q)
+      }
+
+      if (++idx < vars.length) {
+        queries = queries.concat(getQueries(url, vars, idx))
+      }
+      return queries
     }
 
     var getSub = async function (subquery, vars, entry) {
@@ -419,6 +464,65 @@
         sub = parseSub(subquery)
       }
 
+      if (sub) {
+        var queryCount = 0
+        var varsData = []
+        for (var i = 0; i < vars.length; i++) {
+          var v = getVar2(entry, vars[i])
+          if (v) {
+            if (!Array.isArray(v)) {
+              v = [v]
+            }
+            if (v.length > 0) {
+              varsData.push({val: v, name: vars[i]})
+              queryCount += v.length
+            }
+          } else {
+            break
+          }
+        }
+
+        if (queryCount > 0) {
+          console.log('Number of needed query for condition ', queryCount, entry)
+        } else if (queryCount > 5) {
+          console.warn('Number of needed query for condition ', queryCount, entry)
+        }
+        var queries = getQueries(sub.url, varsData, 0)
+        var retval = []
+        for (i = 0; i < queries.length; i++) {
+          var val = await Artnum.Query.exec(Artnum.Path.url(queries[i]))
+          if (val.success && val.length > 0) {
+            if (!sub.val) {
+              val.data.forEach(function (v) {
+                retval.push(String(v))
+              })
+            } else {
+              val.data.forEach(function (val) {
+                var vals = []
+                sub.val.forEach(function (v) {
+                  var _v = getVar(val, '_' + v)
+                  if (_v) {
+                    vals.push(_v)
+                  }
+                })
+                if (vals.length === 1) {
+                  retval.push(vals[0])
+                } else if (vals.length > 1) {
+                  retval.push(vals.join(' '))
+                }
+              })
+            }
+          }
+        }
+      }
+      return retval
+    }
+
+    var getSub2 = async function (subquery, attr, vars, entry) {
+      var sub = null
+      if (subquery[0] === '@') {
+        sub = parseSub(subquery)
+      }
       if (sub) {
         for (var i = 0; i < vars.length; i++) {
           var v = getVar(entry, vars[i])
@@ -432,22 +536,8 @@
         if (sub) {
           var val = await Artnum.Query.exec(Artnum.Path.url(sub.url))
           if (val.success && val.length > 0) {
-            if (!sub.val) {
-              return String(val.data[0])
-            } else {
-              var vals = []
-              sub.val.forEach(function (v) {
-                var _v = getVar(val.data[0], '_' + v)
-                if (_v) {
-                  vals.push(_v)
-                }
-              })
-              if (vals.length === 1) {
-                return vals[0]
-              } else if (vals.length > 1) {
-                return vals.join(' ')
-              }
-            }
+            var _v = getVar(val.data[0], '_' + attr)
+            if (_v) { return _v }
           }
         }
       }
@@ -461,7 +551,6 @@
           let entry = result.data[e]
           this.isNewer(entry)
           ;(new Promise(async function (resolve, reject) {
-            var subresults = []
             var row = []
             for (var i = 0; i < this.Column.length; i++) {
               var value = null
@@ -474,60 +563,31 @@
                     if (tmp.subquery) {
                       val[x] = await getSub(tmp.subquery, tmp.vars, entry)
                     } else {
-                      val[x] = getVar(entry, tmp.vars[0])
+                      val[x] = [getVar(entry, tmp.vars[0])]
                     }
                   }
-
-                  if (val[0] && val[1]) {
+                  if (val[0] && val[1] && val[0].length > 0 && val[1].length > 0) {
                     var res = false
-                    switch (condition.operation) {
-                      case 'lte': res = val[0] <= val[1]; break
-                      case 'gte': res = val[0] >= val[1]; break
-                      case 'ne': res = val[0] !== val[1]; break
-                      case 'eq': res = val[0] === val[1]; break
-                      case 'lt': res = val[0] < val[1]; break
-                      case 'gt': res = val[0] > val[1]; break
-                    }
-
-                    if (!res) {
-                      console.log(entry)
-                      continue
+                    for (var v1 = val[0].pop(); v1; v1 = val[0].pop()) {
+                      for (var v2 = val[1].pop(); v2; v2 = val[1].pop()) {
+                        switch (condition.operation) {
+                          case 'lte': res = v2 <= v1; break
+                          case 'gte': res = v2 >= v1; break
+                          case 'ne': res = v2 !== v1; break
+                          case 'eq': res = v2 === v1; break
+                          case 'lt': res = v2 < v1; break
+                          case 'gt': res = v2 > v1; break
+                        }
+                        if (!res) {
+                          return
+                        }
+                      }
                     }
                   }
                 }
               }
               if (this.Column[i].subquery !== null) {
-                if (!subresults[this.Column[i].subquery]) {
-                  var url = this.Subquery[this.Column[i].subquery].ref.substr(1)
-                  var allNull = true
-                  for (var j = 0; j < this.Column[i].vars.length; j++) {
-                    url = url.replace(this.Column[i].vars[j], entry[this.Column[i].vars[j].substr(1)])
-                    if (entry[this.Column[i].vars[j].substr(1)]) {
-                      allNull = false
-                    }
-                  }
-                  if (!allNull) {
-                    var r = await Artnum.Query.exec(Artnum.Path.url(url))
-                    if (r.success && r.length > 0) {
-                      subresults[this.Column[i].subquery] = r.data
-                    } else {
-                      subresults[this.Column[i].subquery] = null
-                    }
-                  }
-                }
-                if (subresults[this.Column[i].subquery]) {
-                  var s = subresults[this.Column[i].subquery]
-                  if (Array.isArray(s)) {
-                    value = []
-                    s.forEach(function (_s) {
-                      value.push(_s[this.Column[i].attr] ? _s[this.Column[i].attr] : '')
-                    }.bind(this))
-                  } else {
-                    value = s[this.Column[i].attr] ? s[this.Column[i].attr] : ''
-                  }
-                } else {
-                  value = ''
-                }
+                value = await getSub2(this.Column[i].subquery, this.Column[i].attr, this.Column[i].vars, entry)
               } else {
                 if (entry[this.Column[i].attr]) {
                   value = entry[this.Column[i].attr]
@@ -560,10 +620,12 @@
               break
             case 'parameters':
               opts.params = _opts[k]
+              this.searchParams = _opts[k]
           }
         }
         Artnum.Query.exec(Artnum.Path.url(this.Table.getAttribute(names.source), opts)).then(function (result) {
           this.processResult(result)
+          this.refresh()
         }.bind(this))
       }
     }
@@ -590,6 +652,7 @@
 
     DTable.prototype.row = function (row) {
       var tr = document.createElement('TR')
+      if (String(row.id) === '8016') { console.log(row) }
       tr.setAttribute(names.id, row.id)
       for (var i = 0; i < row.content.length; i++) {
         var td = document.createElement('TD')
@@ -626,7 +689,6 @@
     DTable.prototype.processHead = function () {
       var th = this.Thead.getElementsByTagName('TH')
       this.Column = []
-      this.Subquery = []
       for (var i = 0; i < th.length; i++) {
         var sortName = 'sort' + i
         if (th[i].getAttribute(names.sortName)) {
@@ -638,20 +700,9 @@
           var attr = th[i].getAttribute(names.attribute)
           if (attr[0] === '@') {
             attr = attr.split(' ', 2)
-            var sub = -1
-            for (var j = 0; j < this.Subquery.length; j++) {
-              if (this.Subquery[j].ref === attr[0]) {
-                sub = j
-                break
-              }
-            }
-            if (sub === -1) {
-              sub = this.Subquery.length
-              this.Subquery.push({ref: attr[0]})
-            }
             var vars = attr[0].match(/(\$[a-zA-Z0-9._\-:]+)+/g)
             var at = attr[1].split(':', 2)
-            this.Column[i] = {attr: at[0], subquery: sub, vars: vars, type: at[1] ? at[1] : 'text', sortName: sortName}
+            this.Column[i] = {attr: at[0], subquery: attr[0], vars: vars, type: at[1] ? at[1] : 'text', sortName: sortName}
           } else {
             at = attr.split(':', 2)
             this.Column[i] = {attr: at[0], subquery: null, vars: [], type: at[1] ? at[1] : 'text', sortName: sortName}
@@ -705,7 +756,6 @@
             }
           }
         }
-        console.log(this.Column[i])
       }
     }
 
