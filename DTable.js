@@ -579,6 +579,7 @@
                           case 'gt': res = v2 > v1; break
                         }
                         if (!res) {
+                          reject({id: entry[this.EntryId]})
                           return
                         }
                       }
@@ -599,11 +600,11 @@
             }
             if (entry[this.EntryId]) {
               resolve({id: entry[this.EntryId], content: row})
-            } else {
-              reject()
             }
           }.bind(this)).then(function (result) {
             this.row(result)
+          }.bind(this), function (rejected) {
+            this.dropRow(rejected.id)
           }.bind(this)))
         }
       }
@@ -650,9 +651,22 @@
       }
     }
 
+    DTable.prototype.dropRow = function (rowid) {
+      var current = this.Tbody.firstChild
+      for (; current; current = current.nextSibling) {
+        if (String(current.getAttribute(names.id)) === String(rowid)) {
+          break
+        }
+      }
+      if (current) {
+        window.requestAnimationFrame(function () {
+          current.parentNode.removeChild(current)
+        })
+      }
+    }
+
     DTable.prototype.row = function (row) {
       var tr = document.createElement('TR')
-      if (String(row.id) === '8016') { console.log(row) }
       tr.setAttribute(names.id, row.id)
       for (var i = 0; i < row.content.length; i++) {
         var td = document.createElement('TD')
