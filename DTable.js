@@ -26,74 +26,83 @@
     var names = {
       sortName: 'data-sort-name',
       sortValue: 'data-sort-value',
+      sortType: 'data-sort-type',
       source: 'data-source',
       options: 'data-options',
       attribute: 'data-attribute',
       entryId: 'data-entry-id',
       id: 'data-id',
       refresh: 'data-refresh',
-      condition: 'data-condition'
+      condition: 'data-condition',
+      sortDirection: 'data-sort-direction',
+      includeInSort: 'data-sort-include'
     }
 
-    var dateValue = function (date) {
+    var dateValue = function (date, time = true) {
       try {
         var x = new Date(date)
-        if (!isNaN(x.getTime())) { return x.getTime() } else { return 0 }
+        if (!isNaN(x.getTime())) {
+          if (time) {
+            return x.getTime()
+          } else {
+            x.setHours(0, 0, 0, 0)
+            return x.getTime()
+          }
+        } else {
+          return 0
+        }
       } catch (e) {
         return 0
       }
     }
 
-    var cmpNode = function (tr1, tr2, options, level = 0) {
-      if (!Array.isArray(options.name)) {
-        options.name = [options.name]
-      }
-      if (!Array.isArray(options.type)) {
-        options.type = [options.type]
-      }
+    var nodeValue = function (node, what) {
+      if (!node) { return false }
+      node = toNode(node, what.name)
+      var value = node.getAttribute(names.sortValue) ? node.getAttribute(names.sortValue) : node.innerText
+      if (value === undefined) { return false }
 
-      var nId = level < options.name.length ? level : options.name.length - 1
-      var tId = level < options.type.length ? level : options.type.length - 1
-
-      var node1 = toNode(tr1, options.name[nId])
-      var node2 = toNode(tr2, options.name[nId])
-
-      var attr1 = node1.getAttribute(names.sortValue) ? node1.getAttribute(names.sortValue) : node1.innerText
-      var attr2 = node2.getAttribute(names.sortValue) ? node2.getAttribute(names.sortValue) : node2.innerText
-
-      if (attr1 && !attr2) { return 1 }
-      if (!attr1 && attr2) { return -1 }
-
-      var v1 = attr1
-      var v2 = attr2
       var number = false
-      switch (options.type[tId]) {
+      switch (what.type) {
         case 'integer':
-          v1 = parseInt(attr1)
-          v2 = parseInt(attr2)
+          value = parseInt(value)
           number = true
           break
         case 'float':
-          v1 = parseFloat(attr1)
-          v2 = parseFloat(attr2)
+          value = parseFloat(value)
           number = true
           break
         case 'string':
-          v1 = String(attr1).toLowerCase()
-          v2 = String(attr2).toLowerCase()
+          value = String(value).toLowerCase()
           break
         case 'date':
-          v1 = dateValue(attr1)
-          v2 = dateValue(attr2)
+          value = dateValue(value, false)
+          break
+        case 'datetime':
+          value = dateValue(value)
           break
       }
 
-      if (number) {
+      return [value, number]
+    }
+
+    var cmpNode = function (tr1, tr2, what) {
+      var direction = what.direction === 'ASC' ? 1 : -1
+      var [attr1, number1] = nodeValue(tr1, what)
+      var [attr2, number2] = nodeValue(tr2, what)
+
+      if (attr1 && !attr2) { return direction }
+      if (!attr1 && attr2) { return -direction }
+
+      var v1 = attr1
+      var v2 = attr2
+
+      if (number1 || number2) {
         if (isNaN(v1) || isNaN(v2)) {
           if (isNaN(v1) && !isNaN(v2)) {
-            return 1
+            return direction
           } else if (!isNaN(v1) && isNaN(v2)) {
-            return -1
+            return -direction
           } else {
             v1 = String(attr1).toLowerCase()
             v2 = String(attr2).toLowerCase()
@@ -104,9 +113,9 @@
           var b2 = v2.toString() !== attr2
           if (b1 || b2) {
             if (!b1 && b2) {
-              return -1
+              return -direction
             } else if (b1 && !b2) {
-              return 1
+              return direction
             } else {
               v1 = String(attr1).toLowerCase()
               v2 = String(attr2).toLowerCase()
@@ -116,12 +125,9 @@
       }
 
       if (v1 === v2) {
-        if (options.name[level + 1]) {
-          return cmpNode(tr1, tr1, options, level + 1)
-        }
         return 0
       }
-      return v1 < v2 ? -1 : 1
+      return v1 < v2 ? -direction : direction
     }
 
     var swapNode = function (htmlarray, n1, n2) {
@@ -130,25 +136,16 @@
       htmlarray[n1] = tmp
     }
 
-    var siftDown = function (htmlarray, i, max, reverse, options) {
+    var siftDown = function (htmlarray, i, max, what) {
       while (i < max) {
         var iBig = i
         var c1 = (2 * i) + 1
         var c2 = c1 + 1
-        if (reverse) {
-          if (c1 < max && cmpNode(htmlarray[c1], htmlarray[iBig], options) < 0) {
-            iBig = c1
-          }
-          if (c2 < max && cmpNode(htmlarray[c2], htmlarray[iBig], options) < 0) {
-            iBig = c2
-          }
-        } else {
-          if (c1 < max && cmpNode(htmlarray[c1], htmlarray[iBig], options) > 0) {
-            iBig = c1
-          }
-          if (c2 < max && cmpNode(htmlarray[c2], htmlarray[iBig], options) > 0) {
-            iBig = c2
-          }
+        if (c1 < max && cmpNode(htmlarray[c1], htmlarray[iBig], what) < 0) {
+          iBig = c1
+        }
+        if (c2 < max && cmpNode(htmlarray[c2], htmlarray[iBig], what) < 0) {
+          iBig = c2
         }
         if (iBig === i) { return }
         swapNode(htmlarray, i, iBig)
@@ -156,22 +153,46 @@
       }
     }
 
-    var heapSort = function (htmlarray, options) {
+    var sort = function (htmlarray, options) {
       return new Promise(function (resolve, reject) {
-        var reverse = options.reverse ? options.reverse : false
-        var i = Math.floor(htmlarray.length / 2 - 1)
-        while (i >= 0) {
-          siftDown(htmlarray, i, htmlarray.length, reverse, options)
-          i--
-        }
-        var end = htmlarray.length - 1
-        while (end > 0) {
-          swapNode(htmlarray, 0, end)
-          siftDown(htmlarray, 0, end, reverse, options)
-          end--
-        }
-        resolve(htmlarray)
+        resolve(heapSort(htmlarray, options, 0, htmlarray.length, 0))
       })
+    }
+
+    var heapSort = function (htmlarray, options, offset, length, level) {
+      var groups = {}
+      var what = options.what[level]
+      var i = Math.floor(length / 2 - 1)
+      while (i >= 0) {
+        siftDown(htmlarray, i + offset, length, what)
+        i--
+      }
+      var end = length - 1
+      while (end > 0) {
+        swapNode(htmlarray, offset, end + offset)
+        if (!groups[String(nodeValue(htmlarray[end], what)[0])]) {
+          groups[String(nodeValue(htmlarray[end], what)[0])] = []
+        }
+        groups[String(nodeValue(htmlarray[end], what)[0])].push(htmlarray[end])
+        siftDown(htmlarray, offset, end + offset, what)
+        end--
+      }
+      if (!groups[String(nodeValue(htmlarray[end], what)[0])]) {
+        groups[String(nodeValue(htmlarray[end], what)[0])] = []
+      }
+      groups[String(nodeValue(htmlarray[end], what)[0])].push(htmlarray[end])
+
+      var retarray = []
+
+      for (var g in groups) {
+        if (level < options.what.length - 1) {
+          if (groups[g].length > 1) {
+            groups[g] = heapSort(groups[g], options, 0, groups[g].length, level + 1)
+          }
+        }
+        retarray = retarray.concat(groups[g])
+      }
+      return retarray
     }
 
     /* Not the fastest way of sorting (for the same dataset I could gain some 100ms) BUT :
@@ -191,7 +212,7 @@
           resolve(array)
         })
       }()).then(function (array) {
-        heapSort(array, o).then(function (array) {
+        sort(array, o).then(function (array) {
           window.requestAnimationFrame(function () {
             for (var i = array.length - 1; i >= 0; i--) {
               parent.insertBefore(array[i], parent.firstChild)
@@ -271,23 +292,17 @@
         }
       }
 
-      this.Thead.addEventListener('click', function (event) {
-        var reverse = false
-        if (!this.Thead.getAttribute('data-sort-dir')) {
-          this.Thead.setAttribute('data-sort-dir', 'ASC')
-        } else {
-          if (this.Thead.getAttribute('data-sort-dir') === 'ASC') {
-            reverse = true
-          }
+      this.Thead.addEventListener('mouseup', function (event) {
+        if (this.mouseClickTimer !== null) {
+          clearTimeout(this.mouseClickTimer)
+          this.doSort(event)
         }
+      }.bind(this))
 
-        if (reverse) {
-          this.Thead.setAttribute('data-sort-dir', 'DESC')
-        } else {
-          this.Thead.setAttribute('data-sort-dir', 'ASC')
-        }
-
-        this.sortFrom(event.target, reverse)
+      this.Thead.addEventListener('mousedown', function (event) {
+        this.mouseClickTimer = setTimeout(function () {
+          this[1].doSort(this[0], true)
+        }.bind([event, this]), 250)
       }.bind(this))
 
       if (!this.Tbody) {
@@ -299,8 +314,82 @@
           this.Table.insertBefore(this.Tbody, this.Thead.nextSibling)
         }
       }
+      this.Table.classList.add('dtable')
       this.processHead()
       this.query()
+    }
+
+    DTable.prototype.doSort = function (event, long = false) {
+      var node = event.target
+      var tr = null
+      var nodesInSort = 0
+
+      for (tr = this.Thead.firstElementChild; tr && tr.nodeName !== 'TR'; tr = tr.firstElementChild) ;
+
+      for (var th = tr.firstElementChild; th; th = th.nextElementSibling) {
+        if (th.getAttribute(names.includeInSort)) {
+          nodesInSort++
+        }
+      }
+
+      for (; node && node.nodeName !== 'TH'; node = node.parentNode) ;
+      if (long) {
+        this.mouseClickTimer = null
+        if (node.getAttribute(names.includeInSort)) {
+          var rmId = parseInt(node.getAttribute(names.includeInSort))
+          node.removeAttribute(names.includeInSort)
+          node.removeAttribute(names.sortDirection)
+          nodesInSort--
+
+          for (th = tr.firstElementChild; th; th = th.nextElementSibling) {
+            var cId = th.getAttribute(names.includeInSort)
+            if (cId) {
+              if (parseInt(cId) > rmId) {
+                th.setAttribute(names.includeInSort, cId - 1)
+              }
+            }
+          }
+        } else {
+          node.setAttribute(names.includeInSort, nodesInSort)
+          nodesInSort++
+        }
+      } else {
+        if (!node.getAttribute(names.includeInSort)) {
+          for (th = tr.firstElementChild; th; th = th.nextElementSibling) {
+            th.removeAttribute(names.includeInSort)
+            th.removeAttribute(names.sortDirection)
+          }
+          node.setAttribute(names.includeInSort, '0')
+          nodesInSort = 1
+        }
+      }
+      var what = new Array(nodesInSort)
+      for (th = tr.firstElementChild; th; th = th.nextElementSibling) {
+        var dir = 'ASC'
+        if (th.getAttribute(names.includeInSort)) {
+          var name = th.getAttribute(names.sortName)
+          var idx = parseInt(th.getAttribute(names.includeInSort))
+          if (name) {
+            if ((dir = th.getAttribute(names.sortDirection))) {
+              /* invert only clicked node if there are many nodes */
+              if (node.getAttribute(names.sortName) === name) {
+                if (dir === 'ASC') {
+                  dir = 'DESC'
+                } else {
+                  dir = 'ASC'
+                }
+              }
+            } else {
+              dir = 'ASC'
+            }
+            th.setAttribute(names.sortDirection, dir)
+            what[idx] = { name: name, direction: dir, type: th.getAttribute(names.sortType) ? th.getAttribute(names.sortType) : 'text' }
+          }
+        }
+      }
+      if (what.length > 0) {
+        sortHTMLNodes(this.Tbody, {what: what})
+      }
     }
 
     DTable.prototype.reverseRows = function () {
@@ -323,16 +412,9 @@
 
     var toNode = function (o, name) {
       var node = o.firstChild
-      while (node && node.getAttribute('data-sort-name') !== name) { node = node.nextSibling }
+      while (node && node.getAttribute(names.sortName) !== name) { node = node.nextSibling }
 
       return node
-    }
-
-    DTable.prototype.sortFrom = function (head, reverse) {
-      var name = head.getAttribute('data-sort-name')
-      var type = head.getAttribute('data-sort-type') ? head.getAttribute('data-sort-type') : 'string'
-
-      sortHTMLNodes(this.Tbody, {name: [name], type: [type], reverse: reverse})
     }
 
     DTable.prototype.isNewer = function (entry) {
