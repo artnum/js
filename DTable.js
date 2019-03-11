@@ -93,6 +93,7 @@
       var v1 = String(node.innerHTML).toLowerCase()
       var v2 = String(value).toLowerCase()
 
+      console.log(v1, v2, v1.indexOf(v2))
       if (v1.indexOf(v2) !== -1) {
         return true
       }
@@ -355,9 +356,10 @@
                 break
               default:
                 for (tr = this.Tbody.firstElementChild; tr; tr = tr.nextElementSibling) {
-                  if (!tr.getAttribute(names.filteredOut) &&
-                      !almostHasValue(tr, event.target.value, what)) {
-                    tr.setAttribute(names.filteredOut, what.name)
+                  if (!almostHasValue(tr, event.target.value, what)) {
+                    if (!tr.getAttribute(names.filteredOut)) {
+                      tr.setAttribute(names.filteredOut, what.name)
+                    }
                   } else {
                     if (tr.getAttribute(names.filteredOut) &&
                         tr.getAttribute(names.filteredOut) === what.name) {
