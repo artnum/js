@@ -355,7 +355,8 @@
                 break
               default:
                 for (tr = this.Tbody.firstElementChild; tr; tr = tr.nextElementSibling) {
-                  if (!almostHasValue(tr, event.target.value, what)) {
+                  if (!tr.getAttribute(names.filteredOut) &&
+                      !almostHasValue(tr, event.target.value, what)) {
                     tr.setAttribute(names.filteredOut, what.name)
                   } else {
                     if (tr.getAttribute(names.filteredOut) &&
