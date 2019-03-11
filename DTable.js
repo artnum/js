@@ -155,44 +155,40 @@
 
     var sort = function (htmlarray, options) {
       return new Promise(function (resolve, reject) {
-        resolve(heapSort(htmlarray, options, 0, htmlarray.length, 0))
+        heapSort(htmlarray, options, 0, htmlarray.length, 0)
+
+        if (options.what.length > 1) {
+          for (var i = 1; i < options.what.length; i++) {
+            var last = 0
+            for (var j = 0; j <= htmlarray.length; j++) {
+              if (!htmlarray[j] || cmpNode(htmlarray[last], htmlarray[j], options.what[i - 1]) !== 0) {
+                var a = heapSort(htmlarray.slice(last, j), options, 0, j - last, i)
+                for (var k = 0; k < a.length; k++) {
+                  htmlarray[last + k] = a[k]
+                }
+                last = j
+              }
+            }
+          }
+        }
+        resolve(htmlarray)
       })
     }
 
     var heapSort = function (htmlarray, options, offset, length, level) {
-      var groups = {}
       var what = options.what[level]
       var i = Math.floor(length / 2 - 1)
       while (i >= 0) {
-        siftDown(htmlarray, i + offset, length, what)
+        siftDown(htmlarray, i + offset, length + offset, what)
         i--
       }
       var end = length - 1
       while (end > 0) {
         swapNode(htmlarray, offset, end + offset)
-        if (!groups[String(nodeValue(htmlarray[end], what)[0])]) {
-          groups[String(nodeValue(htmlarray[end], what)[0])] = []
-        }
-        groups[String(nodeValue(htmlarray[end], what)[0])].push(htmlarray[end])
         siftDown(htmlarray, offset, end + offset, what)
         end--
       }
-      if (!groups[String(nodeValue(htmlarray[end], what)[0])]) {
-        groups[String(nodeValue(htmlarray[end], what)[0])] = []
-      }
-      groups[String(nodeValue(htmlarray[end], what)[0])].push(htmlarray[end])
-
-      var retarray = []
-
-      for (var g in groups) {
-        if (level < options.what.length - 1) {
-          if (groups[g].length > 1) {
-            groups[g] = heapSort(groups[g], options, 0, groups[g].length, level + 1)
-          }
-        }
-        retarray = retarray.concat(groups[g])
-      }
-      return retarray
+      return htmlarray
     }
 
     /* Not the fastest way of sorting (for the same dataset I could gain some 100ms) BUT :
@@ -292,19 +288,39 @@
         }
       }
 
-      this.Thead.addEventListener('mouseup', function (event) {
+      /* setup events */
+      var evFnUp = function (event) {
         if (this.mouseClickTimer !== null) {
           clearTimeout(this.mouseClickTimer)
           this.doSort(event)
         }
-      }.bind(this))
+      }.bind(this)
+      this.Thead.addEventListener('mouseup', function (event) {
+        evFnUp(event)
+      })
+      this.Thead.addEventListener('touchend', function (event) {
+        event.preventDefault()
+        evFnUp(event)
+      })
 
+      var evFnDown = function (event, activateFilter = false) {
+        if (!activateFilter) {
+          this.mouseClickTimer = setTimeout(function () {
+            this.doSort(event, true)
+          }.bind(this), 250)
+        } else {
+          /* filter mode */
+        }
+      }.bind(this)
       this.Thead.addEventListener('mousedown', function (event) {
-        this.mouseClickTimer = setTimeout(function () {
-          this[1].doSort(this[0], true)
-        }.bind([event, this]), 250)
-      }.bind(this))
+        evFnDown(event, event.ctrlKey)
+      })
+      this.Thead.addEventListener('touchstart', function (event) {
+        event.preventDefault()
+        evFnDown(event, event.touches.length > 1)
+      })
 
+      /* end init */
       if (!this.Tbody) {
         tbodys = this.Table.getElementsByTagName('TBODY')
         if (tbodys.length > 0) {
