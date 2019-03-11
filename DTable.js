@@ -93,7 +93,6 @@
       var v1 = String(node.innerHTML).toLowerCase()
       var v2 = String(value).toLowerCase()
 
-      console.log(v1, v2, v1.indexOf(v2))
       if (v1.indexOf(v2) !== -1) {
         return true
       }
