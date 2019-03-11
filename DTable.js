@@ -35,7 +35,8 @@
       refresh: 'data-refresh',
       condition: 'data-condition',
       sortDirection: 'data-sort-direction',
-      includeInSort: 'data-sort-include'
+      includeInSort: 'data-sort-include',
+      filteredOut: 'data-filtered-out'
     }
 
     var dateValue = function (date, time = true) {
@@ -84,6 +85,18 @@
       }
 
       return [value, number]
+    }
+
+    var almostHasValue = function (tr, value, what) {
+      if (!tr) { return false }
+      var node = toNode(tr, what.name)
+      var v1 = String(node.innerHTML).toLowerCase()
+      var v2 = String(value).toLowerCase()
+
+      if (v1.indexOf(v2) !== -1) {
+        return true
+      }
+      return false
     }
 
     var cmpNode = function (tr1, tr2, what) {
@@ -202,7 +215,7 @@
       ;(function () {
         return new Promise(function (resolve, reject) {
           var array = []
-          for (var i = parent.firstChild; i; i = i.nextSibling) {
+          for (var i = parent.firstElementChild; i; i = i.nextElementSibling) {
             array.push(i)
           }
           resolve(array)
@@ -309,9 +322,55 @@
             this.doSort(event, true)
           }.bind(this), 250)
         } else {
-          /* filter mode */
+          this.mouseClickTimer = null // disable sort
+
+          for (var n = event.target.firstElementChild; n; n = n.firstElementSibling) {
+            if (n.nodeName === 'INPUT' && n.getAttribute('class') === 'filter') {
+              return
+            }
+          }
+
+          var input = document.createElement('INPUT')
+          input.setAttribute('class', 'filter')
+          input.addEventListener('mousedown', (e) => e.stopPropagation())
+          input.addEventListener('mouseup', (e) => e.stopPropagation())
+          input.addEventListener('keyup', function (event) {
+            var th = event.target
+            for (; th && th.nodeName !== 'TH'; th = th.parentNode) ;
+            var what = {name: '', type: ''}
+            what.name = th.getAttribute(names.sortName)
+            what.type = th.getAttribute(names.sortType)
+
+            switch (event.key) {
+              case 'Escape':
+                var n = event.target
+                for (; n && n.nodeName !== 'INPUT'; n = n.parentNode) ;
+                n.parentNode.removeChild(n)
+                for (var tr = this.Tbody.firstElementChild; tr; tr = tr.nextElementSibling) {
+                  if (tr.getAttribute(names.filteredOut) &&
+                      tr.getAttribute(names.filteredOut) === what.name) {
+                    tr.removeAttribute(names.filteredOut)
+                  }
+                }
+                break
+              default:
+                for (tr = this.Tbody.firstElementChild; tr; tr = tr.nextElementSibling) {
+                  if (!almostHasValue(tr, event.target.value, what)) {
+                    tr.setAttribute(names.filteredOut, what.name)
+                  } else {
+                    if (tr.getAttribute(names.filteredOut) &&
+                        tr.getAttribute(names.filteredOut) === what.name) {
+                      tr.removeAttribute(names.filteredOut)
+                    }
+                  }
+                }
+                break
+            }
+          }.bind(this))
+          event.target.appendChild(input)
         }
       }.bind(this)
+
       this.Thead.addEventListener('mousedown', function (event) {
         evFnDown(event, event.ctrlKey)
       })
@@ -556,6 +615,7 @@
       return queries
     }
 
+    /* TODO merge getSub and getSub2 */
     var getSub = async function (subquery, vars, entry) {
       var sub = null
       if (subquery[0] === '@') {
