@@ -105,19 +105,19 @@
         v2 = v2.substring(1).trim()
         trueValue = false
       }
-      
+
       if (v2.length === 1) {
         switch (v2) {
           case '*':
             if (v1.length > 0) {
               return true
             }
-            break
+            return false
           case '-':
             if (v1.length === 0) {
               return true
             }
-            break
+            return false
         }
       } else {
         var special = '*?+'
@@ -127,11 +127,7 @@
           if (pos !== -1) {
             if (v2[pos - 1] !== '\\') {
               regexp = true
-              if (special[i] === '?') {
-                v2 = v2.split(special[i]).join('.')
-              } else {
-                v2 = v2.split(special[i]).join(`.${special[i]}`)
-              }
+              v2 = v2.split(special[i]).join(`.${special[i]}`)
             } else {
               v2 = v2.split(`\\${special[i]}`).join(special[i])
             }
@@ -908,10 +904,14 @@
         }
       }
       window.requestAnimationFrame(function () {
-        if (current) {
-          this.Tbody.replaceChild(tr, current)
-        } else {
-          this.Tbody.appendChild(tr)
+        try {
+          if (current) {
+            this.Tbody.replaceChild(tr, current)
+          } else {
+            this.Tbody.appendChild(tr)
+          }
+        } catch (e) {
+          // node is not there anymore
         }
       }.bind(this))
     }
