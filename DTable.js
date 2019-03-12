@@ -87,11 +87,16 @@
       return [value, number, txtVal]
     }
 
-    var almostHasValue = function (tr, value, what) {
+    var almostHasValue = function (tr, value, what, translit = null) {
       if (!tr) { return false }
       var node = toNode(tr, what.name)
       var v1 = String(node.innerHTML).toLowerCase()
       var v2 = String(value).toLowerCase()
+
+      if (translit) {
+        v1 = translit(v1)
+        v2 = translit(v2)
+      }
 
       if (v1.indexOf(v2) !== -1) {
         return true
@@ -355,7 +360,7 @@
                 break
               default:
                 for (tr = this.Tbody.firstElementChild; tr; tr = tr.nextElementSibling) {
-                  if (!almostHasValue(tr, event.target.value, what)) {
+                  if (!almostHasValue(tr, event.target.value, what, this.transliterate ? this.transliterate : null)) {
                     if (!tr.getAttribute(names.filteredOut)) {
                       tr.setAttribute(names.filteredOut, what.name)
                     }
