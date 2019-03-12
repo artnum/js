@@ -99,6 +99,13 @@
       }
 
       if (v2.length === 0) { return true }
+
+      var trueValue = true
+      if (v2[0] === '!') {
+        v2 = v2.substring(1).trim()
+        trueValue = false
+      }
+      
       if (v2.length === 1) {
         switch (v2) {
           case '*':
@@ -112,29 +119,22 @@
             }
             break
         }
-      }
-
-      var trueValue = true
-      if (v2[0] === '!') {
-        v2 = v2.substring(1).trim()
-        trueValue = false
-      }
-
-      var special = '*?+'
-      var regexp = false
-      for (var i = 0; i < special.length; i++) {
-        var pos = v2.indexOf(special[i])
-        console.log(pos, special[i])
-        if (pos !== -1) {
-          if (v2[pos - 1] !== '\\') {
-            regexp = true
-            if (special[i] === '?') {
-              v2 = v2.split(special[i]).join('.')
+      } else {
+        var special = '*?+'
+        var regexp = false
+        for (var i = 0; i < special.length; i++) {
+          var pos = v2.indexOf(special[i])
+          if (pos !== -1) {
+            if (v2[pos - 1] !== '\\') {
+              regexp = true
+              if (special[i] === '?') {
+                v2 = v2.split(special[i]).join('.')
+              } else {
+                v2 = v2.split(special[i]).join(`.${special[i]}`)
+              }
             } else {
-              v2 = v2.split(special[i]).join(`.${special[i]}`)
+              v2 = v2.split(`\\${special[i]}`).join(special[i])
             }
-          } else {
-            v2 = v2.split(`\\${special[i]}`).join(special[i])
           }
         }
       }
