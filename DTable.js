@@ -61,8 +61,8 @@
       if (!node) { return false }
       node = toNode(node, what.name)
       var value = node.getAttribute(names.sortValue) ? node.getAttribute(names.sortValue) : node.innerText
+      var txtVal = value
       if (value === undefined) { return false }
-
       var number = false
       switch (what.type) {
         case 'integer':
@@ -84,7 +84,7 @@
           break
       }
 
-      return [value, number]
+      return [value, number, txtVal]
     }
 
     var almostHasValue = function (tr, value, what) {
@@ -101,8 +101,8 @@
 
     var cmpNode = function (tr1, tr2, what) {
       var direction = what.direction === 'ASC' ? 1 : -1
-      var [attr1, number1] = nodeValue(tr1, what)
-      var [attr2, number2] = nodeValue(tr2, what)
+      var [attr1, number1, txt1] = nodeValue(tr1, what)
+      var [attr2, number2, txt2] = nodeValue(tr2, what)
 
       if (attr1 && !attr2) { return direction }
       if (!attr1 && attr2) { return -direction }
@@ -117,21 +117,21 @@
           } else if (!isNaN(v1) && isNaN(v2)) {
             return -direction
           } else {
-            v1 = String(attr1).toLowerCase()
-            v2 = String(attr2).toLowerCase()
+            v1 = String(txt1).toLowerCase()
+            v2 = String(txt2).toLowerCase()
           }
         } else {
           /* parseInt/parseFloat do their best so "12asd" will give 12, but it's not an integer. */
-          var b1 = v1.toString() !== attr1
-          var b2 = v2.toString() !== attr2
+          var b1 = v1.toString() !== txt1
+          var b2 = v2.toString() !== txt2
           if (b1 || b2) {
             if (!b1 && b2) {
               return -direction
             } else if (b1 && !b2) {
               return direction
             } else {
-              v1 = String(attr1).toLowerCase()
-              v2 = String(attr2).toLowerCase()
+              v1 = String(txt1).toLowerCase()
+              v2 = String(txt2).toLowerCase()
             }
           }
         }
