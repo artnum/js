@@ -621,6 +621,7 @@
     var getVar = function (entry, varname) {
       var v = varname.substr(1).split('.')
       var e = entry
+      if (!e) { return null }
       for (var i = 0; i < v.length; i++) {
         if (e[v[i]]) {
           e = e[v[i]]
@@ -860,6 +861,8 @@
         case 'money':
           value = parseFloat(value).toFixed(2)
           return String(value)
+        case 'bool':
+          return value ? 'Oui' : ''
       }
     }
 
