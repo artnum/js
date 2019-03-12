@@ -90,18 +90,65 @@
     var almostHasValue = function (tr, value, what, translit = null) {
       if (!tr) { return false }
       var node = toNode(tr, what.name)
-      var v1 = String(node.innerHTML).toLowerCase()
-      var v2 = String(value).toLowerCase()
+      var v1 = String(node.innerHTML).toLowerCase().trim()
+      var v2 = String(value).toLowerCase().trim()
 
       if (translit) {
         v1 = translit(v1)
         v2 = translit(v2)
       }
 
-      if (v1.indexOf(v2) !== -1) {
-        return true
+      if (v2.length === 0) { return true }
+      if (v2.length === 1) {
+        switch (v2) {
+          case '*':
+            if (v1.length > 0) {
+              return true
+            }
+            break
+          case '-':
+            if (v1.length === 0) {
+              return true
+            }
+            break
+        }
       }
-      return false
+
+      var trueValue = true
+      if (v2[0] === '!') {
+        v2 = v2.substring(1).trim()
+        trueValue = false
+      }
+
+      var special = '*?+'
+      var regexp = false
+      for (var i = 0; i < special.length; i++) {
+        var pos = v2.indexOf(special[i])
+        console.log(pos, special[i])
+        if (pos !== -1) {
+          if (v2[pos - 1] !== '\\') {
+            regexp = true
+            if (special[i] === '?') {
+              v2 = v2.split(special[i]).join('.')
+            } else {
+              v2 = v2.split(special[i]).join(`.${special[i]}`)
+            }
+          } else {
+            v2 = v2.split(`\\${special[i]}`).join(special[i])
+          }
+        }
+      }
+
+      if (regexp) {
+        if ((new RegExp(v2)).test(v1)) {
+          return trueValue
+        }
+      } else {
+        if (v1.indexOf(v2) !== -1) {
+          return trueValue
+        }
+      }
+      return !trueValue
     }
 
     var cmpNode = function (tr1, tr2, what) {
@@ -379,8 +426,12 @@
       }.bind(this)
 
       this.Thead.addEventListener('mousedown', function (event) {
-        evFnDown(event, event.ctrlKey)
-      })
+        if (event.shiftKey) {
+          this.doSort(event, true)
+        } else {
+          evFnDown(event, event.ctrlKey)
+        }
+      }.bind(this))
       this.Thead.addEventListener('touchstart', function (event) {
         event.preventDefault()
         evFnDown(event, event.touches.length > 1)
