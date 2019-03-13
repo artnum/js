@@ -14,6 +14,7 @@
   var Artnum = global.Artnum
 
   global.Artnum.DTable = (function () {
+    var Cache = {}
     var isHTMLElement = function (x) {
       return (typeof HTMLElement === 'object' ? x instanceof HTMLElement : x && typeof x === 'object' && x !== null && x.nodeType === Node.ELEMENT_NODE && typeof x.nodeName === 'string')
     }
@@ -695,15 +696,21 @@
           }
         }
 
-        if (queryCount > 0) {
-          console.log('Number of needed query for condition ', queryCount, entry)
-        } else if (queryCount > 5) {
+        if (queryCount > 5) {
           console.warn('Number of needed query for condition ', queryCount, entry)
         }
         var queries = getQueries(sub.url, varsData, 0)
         var retval = []
         for (i = 0; i < queries.length; i++) {
-          var val = await Artnum.Query.exec(Artnum.Path.url(queries[i]))
+          var url = Artnum.Path.url(queries[i])
+          var val
+          if (Cache[String(url)]) {
+            val = Cache[String(url)]
+          } else {
+            val = await Artnum.Query.exec(url)
+            Cache[String(url)] = val
+          }
+
           if (val.success && val.length > 0) {
             if (!sub.val) {
               val.data.forEach(function (v) {
@@ -747,7 +754,13 @@
           }
         }
         if (sub) {
-          var val = await Artnum.Query.exec(Artnum.Path.url(sub.url))
+          var url = Artnum.Path.url(sub.url)
+          var val
+          if (Cache[String(url)]) {
+            val = Cache[String(url)]
+          } else {
+            val = await Artnum.Query.exec(url)
+          }
           if (val.success && val.length > 0) {
             var _v = getVar(val.data[0], '_' + attr)
             if (_v) { return _v }
