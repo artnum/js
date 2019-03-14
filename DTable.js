@@ -47,7 +47,7 @@
           if (time) {
             return x.getTime()
           } else {
-            x.setHours(0, 0, 0, 0)
+            x.setHours(12, 0, 0, 0)
             return x.getTime()
           }
         } else {
@@ -778,6 +778,8 @@
           this.isNewer(entry)
           ;(new Promise(async function (resolve, reject) {
             var row = []
+
+            /* Verify confition first */
             for (var i = 0; i < this.Column.length; i++) {
               var value = null
               if (this.Column[i].condition) {
@@ -813,6 +815,10 @@
                   }
                 }
               }
+            }
+
+            /* Process attribute */
+            for (i = 0; i < this.Column.length; i++) {
               if (this.Column[i].subquery !== null) {
                 value = await getSub2(this.Column[i].subquery, this.Column[i].attr, this.Column[i].vars, entry)
               } else {
@@ -935,6 +941,7 @@
     DTable.prototype.processHead = function () {
       var th = this.Thead.getElementsByTagName('TH')
       this.Column = []
+
       for (var i = 0; i < th.length; i++) {
         var sortName = 'sort' + i
         if (th[i].getAttribute(names.sortName)) {
