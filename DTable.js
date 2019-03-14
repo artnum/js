@@ -712,6 +712,9 @@
           }
 
           if (val.success && val.length > 0) {
+            if (!Array.isArray(val.data)) {
+              val.data = [val.data]
+            }
             if (!sub.val) {
               val.data.forEach(function (v) {
                 retval.push(String(v))
@@ -762,7 +765,12 @@
             val = await Artnum.Query.exec(url)
           }
           if (val.success && val.length > 0) {
-            var _v = getVar(val.data[0], '_' + attr)
+            var _v
+            if (val.length === 1 && !Array.isArray(val.data)) {
+              _v = getVar(val.data, '_' + attr)
+            } else {
+              _v = getVar(val.data[0], '_' + attr)
+            }
             if (_v) { return _v }
           }
         }
