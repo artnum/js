@@ -581,15 +581,30 @@
           this.ModifiedInt = false
         }
 
-        var qparams = Object.assign({}, this.searchParams)
+        var qparams = {}
         if (params.parameters) {
           qparams = Object.assign(qparams, params.parameters)
         }
         if (params.indicator.parameter) {
+          if (!this.CurrentVal) {
+            this.CurrentVal = Math.round((new Date()).getTime() / 1000)
+          }
           qparams[params.indicator.parameter] = '>' + String(this.CurrentVal)
-          Artnum.Query.exec(Artnum.Path.url(this.Table.getAttribute(names.source), {params: qparams})).then(function (result) {
+          Artnum.Query.exec(Artnum.Path.url(this.Table.getAttribute(names.source), {params: qparams})).then(async function (result) {
             if (result.success && result.length > 0) {
-              this.processResult(result)
+              var data = []
+              for (var i = 0; i < result.length; i++) {
+                this.isNewer(result.data[i])
+                var p = this.searchParams
+                p[`search.${this.EntryId}`] = result.data[i][this.EntryId]
+                var x = await Artnum.Query.exec(Artnum.Path.url(this.Table.getAttribute(names.source), {params: p}))
+                if (x.length > 0) {
+                  data.push(result.data[i])
+                } else {
+                  this.dropRow(result.data[i][this.EntryId])
+                }
+              }
+              this.processResult({success: true, length: data.length, data: data})
             }
             this.refresh()
           }.bind(this))
