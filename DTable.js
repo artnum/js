@@ -70,6 +70,7 @@
           value = parseInt(value)
           number = true
           break
+        case 'money':
         case 'float':
           value = parseFloat(value)
           number = true
@@ -986,6 +987,9 @@
           }
         } else {
           this.Column[i] = {attr: th[i].innerText, subquery: null, vars: [], type: 'text', sortName: sortName}
+        }
+        if (this.Column[i].type !== 'text' && !th[i].getAttribute(names.sortType)) {
+          th[i].setAttribute(names.sortType, this.Column[i].type)
         }
 
         if (th[i].getAttribute(names.condition)) {
