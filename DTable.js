@@ -682,7 +682,7 @@
         var queryCount = 0
         var varsData = []
         for (var i = 0; i < vars.length; i++) {
-          var v = getVar2(entry, vars[i])
+          let v = getVar2(entry, vars[i])
           if (v) {
             if (!Array.isArray(v)) {
               v = [v]
