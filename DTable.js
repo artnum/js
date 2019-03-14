@@ -928,6 +928,7 @@
       for (var i = 0; i < row.content.length; i++) {
         var td = document.createElement('TD')
         td.setAttribute('data-sort-name', row.content[i].sortName)
+        td.classList.add(row.content[i].type)
         if (Array.isArray(row.content[i].value)) {
           for (var j = 0; j < row.content[i].value.length; j++) {
             var span = document.createElement('SPAN')
