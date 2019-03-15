@@ -58,6 +58,28 @@
       }
     }
 
+    var timeValue = function (value) {
+      var v = 0
+      if (value.indexOf(':') !== -1) {
+        value = value.split(':')
+        v = parseInt(value[0]) * 3600
+        v += parseInt(value[1]) * 60
+        if (value.length > 2) {
+          v += parseInt(value[2])
+        }
+      } else if (value.indexOf('.') !== -1 || value.indexOf(',') !== -1) {
+        if (value.indexOf('.') !== -1) {
+          value = value.split('.')
+        } else {
+          value = value.split(',')
+        }
+        v = value[0] * 60
+        v += value[1] * 60
+        v *= 60
+      }
+      return v
+    }
+
     var nodeValue = function (node, what) {
       if (!node) { return false }
       node = toNode(node, what.name)
@@ -83,6 +105,10 @@
           break
         case 'datetime':
           value = dateValue(value)
+          break
+        case 'time':
+          value = timeValue(value)
+          number = true
           break
       }
 
@@ -281,6 +307,7 @@
       })
     }
     var DTable = function () {
+      this.sortOnly = false
       this.Table = null
       this.Thead = null
       this.Tbody = null
@@ -305,11 +332,12 @@
             this.Table = arguments[0].table
           }
         }
+        this.sortOnly = arguments[0].sortOnly
       }
       if (!this.Table) {
         throw Error('No table given')
       }
-      if (!this.Table.getAttribute(names.source)) {
+      if (!this.Table.getAttribute(names.source) && !this.sortOnly) {
         throw Error('No source given')
       }
       if (this.Table.getAttribute(names.entryId)) {
@@ -457,7 +485,9 @@
       }
       this.Table.classList.add('dtable')
       this.processHead()
-      this.query()
+      if (!this.sortOnly) {
+        this.query()
+      }
     }
 
     DTable.prototype.doSort = function (event, long = false) {
