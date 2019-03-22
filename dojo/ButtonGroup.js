@@ -1,4 +1,5 @@
 /* eslint-env browser,amd */
+/* global transliterate */
 define([
   'dojo/_base/declare',
   'dojo/Evented',
@@ -129,6 +130,10 @@ define([
 
     filterWith: function (value) {
       var btns = dtRegistry.findWidgets(this.domNode)
+      value = value.toLowerCase().trim()
+      if (transliterate) {
+        value = transliterate(value)
+      }
       btns.forEach(function (btn) {
         if (value === '') {
           djDomStyle.set(btn.domNode, 'display', '')
@@ -136,12 +141,20 @@ define([
           var fval = btn.get('filterValue')
           var hide = true
           if (typeof fval === 'string') {
-            if (fval.toLowerCase().indexOf(value.toLowerCase()) === 0) {
+            var cVal = fval.toLowerCase().trim()
+            if (transliterate) {
+              cVal = transliterate(cVal)
+            }
+            if (cVal.indexOf(value) !== -1) {
               hide = false
             }
           } else {
             for (var i in fval) {
-              if (fval[i].toLowerCase().indexOf(value.toLowerCase()) === 0) {
+              cVal = fval[i].toLowerCase().trim()
+              if (transliterate) {
+                cVal = transliterate(cVal)
+              }
+              if (cVal.indexOf(value) !== -1) {
                 hide = false
                 break
               }
