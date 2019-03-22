@@ -1018,7 +1018,7 @@
       for (var i = 0; i < th.length; i++) {
         var sortName = 'sort-' + i
         if (th[i].getAttribute(names.sortName)) {
-          sortName = th[i].getAttributes(names.sortName)
+          sortName = th[i].getAttribute(names.sortName)
         } else {
           th[i].setAttribute(names.sortName, sortName)
         }
