@@ -131,7 +131,7 @@ define([
     filterWith: function (value) {
       var btns = dtRegistry.findWidgets(this.domNode)
       value = value.toLowerCase().trim()
-      if (transliterate) {
+      if (typeof transliterate !== 'undefined') {
         value = transliterate(value)
       }
       btns.forEach(function (btn) {
@@ -142,7 +142,7 @@ define([
           var hide = true
           if (typeof fval === 'string') {
             var cVal = fval.toLowerCase().trim()
-            if (transliterate) {
+            if (typeof transliterate !== 'undefined') {
               cVal = transliterate(cVal)
             }
             if (cVal.indexOf(value) !== -1) {
@@ -151,7 +151,7 @@ define([
           } else {
             for (var i in fval) {
               cVal = fval[i].toLowerCase().trim()
-              if (transliterate) {
+              if (typeof transliterate !== 'undefined') {
                 cVal = transliterate(cVal)
               }
               if (cVal.indexOf(value) !== -1) {
