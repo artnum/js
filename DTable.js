@@ -300,7 +300,7 @@
         sort(array, o).then(function (array) {
           window.requestAnimationFrame(function () {
             for (var i = array.length - 1; i >= 0; i--) {
-              parent.insertBefore(array[i], parent.firstChild)
+              parent.insertBefore(array[i], parent.firstElementChild)
             }
           })
         })
@@ -420,7 +420,7 @@
           input.setAttribute('class', 'filter')
           input.addEventListener('mousedown', (e) => e.stopPropagation())
           input.addEventListener('mouseup', (e) => e.stopPropagation())
-          input.addEventListener('keyup', function (event) {
+          input.addEventListener('keydown', function (event) {
             var th = event.target
             for (; th && th.nodeName !== 'TH'; th = th.parentNode) ;
             var what = {name: '', type: ''}
@@ -480,7 +480,7 @@
           this.Tbody = tbodys[0]
         } else {
           this.Tbody = document.createElement('TBODY')
-          this.Table.insertBefore(this.Tbody, this.Thead.nextSibling)
+          this.Table.insertBefore(this.Tbody, this.Thead.nextElementSibling)
         }
       }
       this.Table.classList.add('dtable')
@@ -564,12 +564,12 @@
     }
 
     DTable.prototype.reverseRows = function () {
-      var firstChild = this.Tbody.firstChild
+      var firstChild = this.Tbody.firstElementChild
 
       var display = function () {
         var start = performance.now()
-        while (firstChild !== this.Tbody.lastChild) {
-          var x = this.Tbody.removeChild(this.Tbody.lastChild)
+        while (firstChild !== this.Tbody.lastElementChild) {
+          var x = this.Tbody.removeChild(this.Tbody.lastElementChild)
           this.Tbody.insertBefore(x, firstChild)
           if (performance.now() - start > 100) {
             window.requestAnimationFrame(display)
@@ -582,14 +582,14 @@
     }
 
     var toNode = function (o, name) {
-      var node = o.firstChild
-      while (node && node.getAttribute(names.sortName) !== name) { node = node.nextSibling }
+      var node = o.firstElementChild
+      while (node && node.getAttribute(names.sortName) !== name) { node = node.nextElementSibling }
       if (!node) {
         var num = parseInt(name.split('-')[1])
         if (!isNaN(num)) {
-          node = o.firstChild
+          node = o.firstElementChild
           for (var i = 0; i < num; i++) {
-            node = node.nextSibling
+            node = node.nextElementSibling
           }
         }
       }
@@ -958,8 +958,8 @@
     }
 
     DTable.prototype.dropRow = function (rowid) {
-      var current = this.Tbody.firstChild
-      for (; current; current = current.nextSibling) {
+      var current = this.Tbody.firstElementChild
+      for (; current; current = current.nextElementSibling) {
         if (String(current.getAttribute(names.id)) === String(rowid)) {
           break
         }
@@ -992,8 +992,8 @@
         }
         tr.appendChild(td)
       }
-      var current = this.Tbody.firstChild
-      for (; current; current = current.nextSibling) {
+      var current = this.Tbody.firstElementChild
+      for (; current; current = current.nextElementSibling) {
         if (String(current.getAttribute(names.id)) === String(row.id)) {
           break
         }
