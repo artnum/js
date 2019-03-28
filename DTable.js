@@ -37,7 +37,8 @@
       condition: 'data-condition',
       sortDirection: 'data-sort-direction',
       includeInSort: 'data-sort-include',
-      filteredOut: 'data-filtered-out'
+      filteredOut: 'data-filtered-out',
+      classInfo: 'data-class'
     }
 
     var dateValue = function (date, time = true) {
@@ -900,7 +901,7 @@
                   value = ''
                 }
               }
-              row.push({value: value, type: this.Column[i].type, sortName: this.Column[i].sortName})
+              row.push({value: value, type: this.Column[i].type, sortName: this.Column[i].sortName, classInfo: this.Column[i].classInfo})
             }
             if (entry[this.EntryId]) {
               resolve({id: entry[this.EntryId], content: row})
@@ -978,6 +979,13 @@
         var td = document.createElement('TD')
         td.setAttribute('data-sort-name', row.content[i].sortName)
         td.classList.add(row.content[i].type)
+        if (row.content[i].classInfo !== '') {
+          row.content[i].classInfo.split(' ').forEach(function (c) {
+            if (c !== '') {
+              td.classList.add(c)
+            }
+          })
+        }
         if (Array.isArray(row.content[i].value)) {
           for (var j = 0; j < row.content[i].value.length; j++) {
             var span = document.createElement('SPAN')
@@ -1017,6 +1025,10 @@
 
       for (var i = 0; i < th.length; i++) {
         var sortName = 'sort-' + i
+        var classInfo = ''
+        if (th[i].getAttribute(names.classInfo)) {
+          classInfo = th[i].getAttribute(names.classInfo)
+        }
         if (th[i].getAttribute(names.sortName)) {
           sortName = th[i].getAttribute(names.sortName)
         } else {
@@ -1028,13 +1040,13 @@
             attr = attr.split(' ', 2)
             var vars = attr[0].match(/(\$[a-zA-Z0-9._\-:]+)+/g)
             var at = attr[1].split(':', 2)
-            this.Column[i] = {attr: at[0], subquery: attr[0], vars: vars, type: at[1] ? at[1] : 'text', sortName: sortName}
+            this.Column[i] = {attr: at[0], subquery: attr[0], vars: vars, type: at[1] ? at[1] : 'text', sortName: sortName, classInfo: classInfo}
           } else {
             at = attr.split(':', 2)
-            this.Column[i] = {attr: at[0], subquery: null, vars: [], type: at[1] ? at[1] : 'text', sortName: sortName}
+            this.Column[i] = {attr: at[0], subquery: null, vars: [], type: at[1] ? at[1] : 'text', sortName: sortName, classInfo: classInfo}
           }
         } else {
-          this.Column[i] = {attr: th[i].innerText, subquery: null, vars: [], type: 'text', sortName: sortName}
+          this.Column[i] = {attr: th[i].innerText, subquery: null, vars: [], type: 'text', sortName: sortName, classInfo: classInfo}
         }
         if (this.Column[i].type !== 'text' && !th[i].getAttribute(names.sortType)) {
           th[i].setAttribute(names.sortType, this.Column[i].type)
