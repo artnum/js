@@ -421,7 +421,7 @@
           input.setAttribute('class', 'filter')
           input.addEventListener('mousedown', (e) => e.stopPropagation())
           input.addEventListener('mouseup', (e) => e.stopPropagation())
-          input.addEventListener('keydown', function (event) {
+          input.addEventListener('keyup', function (event) {
             var th = event.target
             for (; th && th.nodeName !== 'TH'; th = th.parentNode) ;
             var what = {name: '', type: ''}
