@@ -863,14 +863,18 @@
                     var tmp = condition.values[x]
                     if (tmp.subquery) {
                       val[x] = await getSub(tmp.subquery, tmp.vars, entry)
-                    } else {
+                    } else if (tmp.vars) {
                       val[x] = [getVar(entry, tmp.vars[0])]
+                    } else if (tmp.value) {
+                      val[x] = [tmp.value]
                     }
                   }
+
                   if (val[0] && val[1] && val[0].length > 0 && val[1].length > 0) {
                     var res = false
                     for (var v1 = val[0].pop(); v1; v1 = val[0].pop()) {
                       for (var v2 = val[1].pop(); v2; v2 = val[1].pop()) {
+                        console.log(v1, v2)
                         switch (condition.operation) {
                           case 'lte': res = v2 <= v1; break
                           case 'gte': res = v2 >= v1; break
@@ -1088,7 +1092,7 @@
                 if (attr[k][0] === '$') {
                   cond.values[k] = {subquery: null, vars: [attr[k]]}
                 } else {
-                  cond = null
+                  cond.values[k] = {subquery: null, value: attr[k]}
                 }
               }
             }
