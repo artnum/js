@@ -88,7 +88,17 @@
       var txtVal = value
       if (value === undefined) { return false }
       var number = false
-      switch (what.type) {
+      switch (what.type.toLowerCase()) {
+        case 'bool':
+        case 'boolean':
+          if (value.toLowerCase() === 'true') {
+            value = true
+            txtVal = 'a'
+          } else {
+            value = false
+            txtVal = 'b'
+          }
+          break
         case 'integer':
           value = parseInt(value)
           number = true
@@ -180,6 +190,14 @@
       var direction = what.direction === 'ASC' ? 1 : -1
       var [attr1, number1, txt1] = nodeValue(tr1, what)
       var [attr2, number2, txt2] = nodeValue(tr2, what)
+
+      switch (what.type.toLowerCase()) {
+        case 'bool':
+        case 'boolean':
+          if (attr1) { return direction }
+          if (attr2) { return -direction }
+          return 0
+      }
 
       if (attr1 && !attr2) { return direction }
       if (!attr1 && attr2) { return -direction }
