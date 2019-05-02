@@ -515,8 +515,34 @@
       }
     }
 
+    DTable.prototype.refreshSort = function () {
+      let tr = null
+      let nodesInSort = 0
+      for (tr = this.Thead.firstElementChild; tr && tr.nodeName !== 'TR'; tr = tr.firstElementChild) ;
+
+      for (var th = tr.firstElementChild; th; th = th.nextElementSibling) {
+        if (th.getAttribute(names.includeInSort)) {
+          nodesInSort++
+        }
+      }
+      let what = new Array(nodesInSort)
+      for (th = tr.firstElementChild; th; th = th.nextElementSibling) {
+        var dir = 'ASC'
+        if (th.getAttribute(names.includeInSort)) {
+          var name = th.getAttribute(names.sortName)
+          var idx = parseInt(th.getAttribute(names.includeInSort))
+          if (name) {
+            what[idx] = { name: name, direction: th.getAttribute(names.sortDirection) ? th.getAttribute(names.sortDirection) : 'ASC', type: th.getAttribute(names.sortType) ? th.getAttribute(names.sortType) : 'text' }
+          }
+        }
+      }
+      if (what.length > 0) {
+        sortHTMLNodes(this.Tbody, {what: what})
+      }
+    }
+
     DTable.prototype.doSort = function (event, long = false) {
-      var node = event.target
+      var node = event ? event.target : null
       var tr = null
       var nodesInSort = 0
 
@@ -527,7 +553,6 @@
           nodesInSort++
         }
       }
-
       for (; node && node.nodeName !== 'TH'; node = node.parentNode) ;
       if (long) {
         this.mouseClickTimer = null
@@ -559,6 +584,7 @@
           nodesInSort = 1
         }
       }
+
       var what = new Array(nodesInSort)
       for (th = tr.firstElementChild; th; th = th.nextElementSibling) {
         var dir = 'ASC'
@@ -940,10 +966,12 @@
             this.dropRow(rejected.id)
           }.bind(this)))
         }
+
+        this.refreshSort()
       }
     }
 
-    DTable.prototype.query = function () {
+    DTable.prototype.query = function (offset = 0) {
       var opts = {params: {}}
       if (this.Table.getAttribute(names.options)) {
         var _opts = toJSON(this.Table.getAttribute(names.options))
@@ -957,9 +985,13 @@
               this.searchParams = _opts[k]
           }
         }
+        opts.params.limit = `${offset},250`
         Artnum.Query.exec(Artnum.Path.url(this.Table.getAttribute(names.source), opts)).then(function (result) {
           this.processResult(result)
           this.refresh()
+          if (result.length === 250) {
+            this.query(offset + 250)
+          }
         }.bind(this))
       }
     }
