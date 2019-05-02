@@ -307,20 +307,23 @@
      *  - After test, heap sort is faster than built-in Array.sort on Chrome and nearly as fast as Firefox's Array.sort
      */
     var sortHTMLNodes = function (parent, o) {
-      ;(function () {
-        return new Promise(function (resolve, reject) {
-          var array = []
-          for (var i = parent.firstElementChild; i; i = i.nextElementSibling) {
-            array.push(i)
-          }
-          resolve(array)
-        })
-      }()).then(function (array) {
-        sort(array, o).then(function (array) {
-          window.requestAnimationFrame(function () {
-            for (var i = array.length - 1; i >= 0; i--) {
-              parent.insertBefore(array[i], parent.firstElementChild)
+      return new Promise(function (res, rej) {
+        ;(function () {
+          return new Promise(function (resolve, reject) {
+            var array = []
+            for (var i = parent.firstElementChild; i; i = i.nextElementSibling) {
+              array.push(i)
             }
+            resolve(array)
+          })
+        }()).then(function (array) {
+          sort(array, o).then(function (array) {
+            window.requestAnimationFrame(function () {
+              for (var i = array.length - 1; i >= 0; i--) {
+                parent.insertBefore(array[i], parent.firstElementChild)
+              }
+              res()
+            })
           })
         })
       })
@@ -515,6 +518,30 @@
       }
     }
 
+    DTable.prototype.refreshFilter = function () {
+      let tr = this.Thead.firstElementChild
+      let what = {name: '', type: ''}
+      for (let th = tr.firstElementChild; th; th = th.nextElementSibling) {
+        let input = th.getElementsByTagName('INPUT')[0]
+        if (input) {
+          what.name = th.getAttribute(names.sortName)
+          what.type = th.getAttribute(names.sortType)
+          for (let line = this.Tbody.firstElementChild; line; line = line.nextElementSibling) {
+            if (!almostHasValue(line, input.value, what, this.transliterate ? this.transliterate : null)) {
+              if (!line.getAttribute(names.filteredOut)) {
+                line.setAttribute(names.filteredOut, what.name)
+              }
+            } else {
+              if (line.getAttribute(names.filteredOut) &&
+                  line.getAttribute(names.filteredOut) === what.name) {
+                line.removeAttribute(names.filteredOut)
+              }
+            }
+          }
+        }
+      }
+    }
+
     DTable.prototype.refreshSort = function () {
       let tr = null
       let nodesInSort = 0
@@ -527,7 +554,6 @@
       }
       let what = new Array(nodesInSort)
       for (th = tr.firstElementChild; th; th = th.nextElementSibling) {
-        var dir = 'ASC'
         if (th.getAttribute(names.includeInSort)) {
           var name = th.getAttribute(names.sortName)
           var idx = parseInt(th.getAttribute(names.includeInSort))
@@ -537,7 +563,11 @@
         }
       }
       if (what.length > 0) {
-        sortHTMLNodes(this.Tbody, {what: what})
+        sortHTMLNodes(this.Tbody, {what: what}).then(function () {
+          this.refreshFilter()
+        }.bind(this))
+      } else {
+        this.refreshFilter()
       }
     }
 
