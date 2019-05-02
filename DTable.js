@@ -367,6 +367,12 @@
         this.refreshParams = toJSON(this.Table.getAttribute(names.refresh))
       }
 
+      if (arguments[0].postprocess) {
+        this.postprocess = arguments[0].postprocess
+      } else {
+        this.postprocess = (node) => {}
+      }
+
       if (arguments[0].head) {
         if (isHTMLElement(arguments[0].head)) {
           this.Thead = arguments[0].head
@@ -1028,6 +1034,7 @@
           break
         }
       }
+      this.postprocess(tr)
       window.requestAnimationFrame(function () {
         try {
           if (current) {
