@@ -1019,9 +1019,10 @@
         opts.params.limit = `${offset},250`
         Artnum.Query.exec(Artnum.Path.url(this.Table.getAttribute(names.source), opts)).then(function (result) {
           this.processResult(result)
-          this.refresh()
           if (parseInt(result.length) + offset < parseInt(max.length)) {
             this.query(offset + parseInt(result.length), max)
+          } else {
+            this.refresh()
           }
         }.bind(this))
       }
