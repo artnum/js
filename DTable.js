@@ -954,7 +954,6 @@
                     var res = false
                     for (var v1 = val[0].pop(); v1; v1 = val[0].pop()) {
                       for (var v2 = val[1].pop(); v2; v2 = val[1].pop()) {
-                        console.log(v1, v2)
                         switch (condition.operation) {
                           case 'lte': res = v2 <= v1; break
                           case 'gte': res = v2 >= v1; break
@@ -973,7 +972,6 @@
                 }
               }
             }
-
             /* Process attribute */
             for (i = 0; i < this.Column.length; i++) {
               if (this.Column[i].subquery !== null) {
@@ -1001,7 +999,7 @@
       }
     }
 
-    DTable.prototype.query = function (offset = 0) {
+    DTable.prototype.query = async function (offset = 0, max = null) {
       var opts = {params: {}}
       if (this.Table.getAttribute(names.options)) {
         var _opts = toJSON(this.Table.getAttribute(names.options))
@@ -1015,12 +1013,15 @@
               this.searchParams = _opts[k]
           }
         }
+        if (!max) {
+          max = await Artnum.Query.exec(Artnum.Path.url(this.Table.getAttribute(names.source) + '/.count', opts))
+        }
         opts.params.limit = `${offset},250`
         Artnum.Query.exec(Artnum.Path.url(this.Table.getAttribute(names.source), opts)).then(function (result) {
           this.processResult(result)
           this.refresh()
-          if (result.length === 250) {
-            this.query(offset + 250)
+          if (parseInt(result.length) + offset < parseInt(max.length)) {
+            this.query(offset + parseInt(result.length), max)
           }
         }.bind(this))
       }
