@@ -974,8 +974,19 @@
             }
             /* Process attribute */
             for (i = 0; i < this.Column.length; i++) {
+              let type = this.Column[i].type
+              let alt = false
               if (this.Column[i].subquery !== null) {
                 value = await getSub2(this.Column[i].subquery, this.Column[i].attr, this.Column[i].vars, entry)
+                if (value === null && this.Column[i].alternative) {
+                  alt = true
+                  type = 'text'
+                  if (entry[this.Column[i].alternative]) {
+                    value = entry[this.Column[i].alternative]
+                  } else {
+                    value = ''
+                  }
+                }
               } else {
                 if (entry[this.Column[i].attr]) {
                   value = entry[this.Column[i].attr]
@@ -983,7 +994,13 @@
                   value = ''
                 }
               }
-              row.push({value: value, type: this.Column[i].type, sortName: this.Column[i].sortName, classInfo: this.Column[i].classInfo})
+              if (!alt && this.Column[i].type.substr(0, 1) === "'") {
+                type = 'text'
+                value = this.Column[i].type.replace('%%', value)
+                value = value.replace("'", '')
+              }
+
+              row.push({value: value, type: type, sortName: this.Column[i].sortName, classInfo: this.Column[i].classInfo})
             }
             if (entry[this.EntryId]) {
               resolve({id: entry[this.EntryId], content: row})
@@ -1130,16 +1147,23 @@
         if (th[i].getAttribute(names.attribute)) {
           var attr = th[i].getAttribute(names.attribute)
           if (attr[0] === '@') {
-            attr = attr.split(' ', 2)
-            var vars = attr[0].match(/(\$[a-zA-Z0-9._\-:]+)+/g)
-            var at = attr[1].split(':', 2)
-            this.Column[i] = {attr: at[0], subquery: attr[0], vars: vars, type: at[1] ? at[1] : 'text', sortName: sortName, classInfo: classInfo}
+            attr = /^(@[^ ]+) (.*)/.exec(attr)
+            var vars = attr[1].match(/(\$[a-zA-Z0-9._\-:]+)+/g)
+            var alt = attr[2].split('|', 2)
+            if (alt.length > 1) {
+              var at = alt[0].split(':', 2)
+              alt = alt[1]
+            } else {
+              at = attr[2].split(':', 2)
+              alt = null
+            }
+            this.Column[i] = {attr: at[0], subquery: attr[1], vars: vars, type: at[1] ? at[1] : 'text', sortName: sortName, classInfo: classInfo, alternative: alt}
           } else {
             at = attr.split(':', 2)
-            this.Column[i] = {attr: at[0], subquery: null, vars: [], type: at[1] ? at[1] : 'text', sortName: sortName, classInfo: classInfo}
+            this.Column[i] = {attr: at[0], subquery: null, vars: [], type: at[1] ? at[1] : 'text', sortName: sortName, classInfo: classInfo, alternative: null}
           }
         } else {
-          this.Column[i] = {attr: th[i].innerText, subquery: null, vars: [], type: 'text', sortName: sortName, classInfo: classInfo}
+          this.Column[i] = {attr: th[i].innerText, subquery: null, vars: [], type: 'text', sortName: sortName, classInfo: classInfo, alternative: null}
         }
         if (this.Column[i].type !== 'text' && !th[i].getAttribute(names.sortType)) {
           th[i].setAttribute(names.sortType, this.Column[i].type)
