@@ -31,6 +31,7 @@
       source: 'data-source',
       options: 'data-options',
       attribute: 'data-attribute',
+      process: 'data-process',
       entryId: 'data-entry-id',
       id: 'data-id',
       refresh: 'data-refresh',
@@ -99,6 +100,7 @@
             txtVal = 'b'
           }
           break
+        case 'number':
         case 'integer':
           value = parseInt(value)
           number = true
@@ -199,8 +201,8 @@
           return 0
       }
 
-      if (attr1 && !attr2) { return direction }
-      if (!attr1 && attr2) { return -direction }
+      if (attr1 && attr2 === undefined) { return direction }
+      if (attr1 === undefined && attr2) { return -direction }
 
       var v1 = attr1
       var v2 = attr2
@@ -217,8 +219,8 @@
           }
         } else {
           /* parseInt/parseFloat do their best so "12asd" will give 12, but it's not an integer. */
-          var b1 = v1.toString() !== txt1
-          var b2 = v2.toString() !== txt2
+          /* var b1 = true
+          var b2 = true
           if (b1 || b2) {
             if (!b1 && b2) {
               return -direction
@@ -228,14 +230,14 @@
               v1 = String(txt1).toLowerCase()
               v2 = String(txt2).toLowerCase()
             }
-          }
+          } */
         }
       }
 
       if (v1 === v2) {
         return 0
       }
-      return v1 < v2 ? -direction : direction
+      return v1 > v2 ? direction : -direction
     }
 
     var swapNode = function (htmlarray, n1, n2) {
@@ -336,6 +338,7 @@
       this.EntryId = 'id'
       this.searchParams = {}
       this.refreshParams = {}
+      this.Plist = []
 
       if (arguments[0]) {
         if (arguments[0].prefix) {
@@ -512,12 +515,18 @@
         }
       }
       this.Table.classList.add('dtable')
+      if (!arguments[1]) {
+        this.run()
+      }
+    }
+
+    DTable.prototype.run = function () {
       this.processHead()
       if (!this.sortOnly) {
         this.query()
       }
     }
-
+    
     DTable.prototype.refreshFilter = function () {
       let tr = this.Thead.firstElementChild
       let what = {name: '', type: ''}
@@ -1000,7 +1009,12 @@
                 value = value.replace("'", '')
               }
 
-              row.push({value: value, type: type, sortName: this.Column[i].sortName, classInfo: this.Column[i].classInfo})
+              let sortValue = null
+              if (this.Column[i].process) {
+                [value, sortValue] = await this.Column[i].process(value, entry)
+              }
+
+              row.push({value: value, sortValue: sortValue, type: type, sortName: this.Column[i].sortName, classInfo: this.Column[i].classInfo})
             }
             if (entry[this.EntryId]) {
               resolve({id: entry[this.EntryId], content: row})
@@ -1042,6 +1056,12 @@
             this.refresh()
           }
         }.bind(this))
+      }
+    }
+
+    DTable.prototype.addPfunc = function (name, funktion) {
+      if (funktion instanceof Function) {
+        this.Plist[name] = funktion
       }
     }
 
@@ -1099,12 +1119,12 @@
           for (var j = 0; j < row.content[i].value.length; j++) {
             var span = document.createElement('SPAN')
             span.setAttribute('class', 'value multi')
-            td.setAttribute(names.sortValue, row.content[i].value[0])
+            td.setAttribute(names.sortValue, row.content[i].sortValue !== null ? row.content[i].sortValue : row.content[i].value[0])
             span.appendChild(document.createTextNode(this.convert(row.content[i].value[j], row.content[i].type)))
             td.appendChild(span)
           }
         } else {
-          td.setAttribute(names.sortValue, row.content[i].value)
+          td.setAttribute(names.sortValue, row.content[i].sortValue !== null ? row.content[i].sortValue : row.content[i].value)
           td.appendChild(document.createTextNode(this.convert(row.content[i].value, row.content[i].type)))
         }
         tr.appendChild(td)
@@ -1167,6 +1187,11 @@
         }
         if (this.Column[i].type !== 'text' && !th[i].getAttribute(names.sortType)) {
           th[i].setAttribute(names.sortType, this.Column[i].type)
+        }
+        if (th[i].getAttribute(names.process) && this.Plist[th[i].getAttribute(names.process)] instanceof Function) {
+          this.Column[i].process = this.Plist[th[i].getAttribute(names.process)]
+        } else {
+          this.Column[i].process = null
         }
 
         if (th[i].getAttribute(names.condition)) {
