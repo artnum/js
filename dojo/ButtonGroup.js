@@ -81,8 +81,13 @@ define([
     },
     eSelectBtn: function (event) {
       var btn = dtRegistry.getEnclosingWidget(event.target)
-      this.set('value', btn.get('value'))
-      this.emit('change', btn.get('value'))
+      if (this.get('value') === btn.get('value')) {
+        this.set('value', null)
+        this.emit('change', null)
+      } else {
+        this.set('value', btn.get('value'))
+        this.emit('change', btn.get('value'))
+      }
 
       if (this.moveNodeTop) {
         window.requestAnimationFrame(function () {
