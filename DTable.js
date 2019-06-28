@@ -39,7 +39,8 @@
       sortDirection: 'data-sort-direction',
       includeInSort: 'data-sort-include',
       filteredOut: 'data-filtered-out',
-      classInfo: 'data-class'
+      classInfo: 'data-class',
+      sortIgnore: 'data-sort-ignore'
     }
 
     var dateValue = function (date, time = true) {
@@ -85,6 +86,8 @@
     var nodeValue = function (node, what) {
       if (!node) { return false }
       node = toNode(node, what.name)
+      if (!node) { return false }
+      if (node.getAttribute(names.sortIgnore)) { return false }
       var value = node.getAttribute(names.sortValue) ? node.getAttribute(names.sortValue) : node.innerText
       var txtVal = value
       if (value === undefined) { return false }
@@ -324,9 +327,12 @@
               for (var i = array.length - 1; i >= 0; i--) {
                 parent.insertBefore(array[i], parent.firstElementChild)
               }
+              if (this.postsort) {
+                window.setTimeout(this.postsort, 0)
+              }
               res()
-            })
-          })
+            }.bind(this))
+          }.bind(this))
         })
       })
     }
@@ -376,7 +382,12 @@
       if (arguments[0].postprocess) {
         this.postprocess = arguments[0].postprocess
       } else {
-        this.postprocess = (node) => {}
+        this.postprocess = null
+      }
+      if (arguments[0].postsort) {
+        this.postsort = arguments[0].postsort
+      } else {
+        this.postsort = null
       }
 
       if (arguments[0].head) {
@@ -526,7 +537,7 @@
         this.query()
       }
     }
-    
+
     DTable.prototype.refreshFilter = function () {
       let tr = this.Thead.firstElementChild
       let what = {name: '', type: ''}
@@ -1135,7 +1146,9 @@
           break
         }
       }
-      this.postprocess(tr)
+      if (this.postprocess) {
+        this.postprocess(tr)
+      }
       window.requestAnimationFrame(function () {
         try {
           if (current) {
