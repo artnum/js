@@ -86,8 +86,6 @@
     var nodeValue = function (node, what) {
       if (!node) { return false }
       node = toNode(node, what.name)
-      if (!node) { return false }
-      if (node.getAttribute(names.sortIgnore)) { return false }
       var value = node.getAttribute(names.sortValue) ? node.getAttribute(names.sortValue) : node.innerText
       var txtVal = value
       if (value === undefined) { return false }
@@ -317,7 +315,9 @@
           return new Promise(function (resolve, reject) {
             var array = []
             for (var i = parent.firstElementChild; i; i = i.nextElementSibling) {
-              array.push(i)
+              if (!i.getAttribute(names.sortIgnore)) {
+                array.push(i)
+              }
             }
             resolve(array)
           })
@@ -326,9 +326,6 @@
             window.requestAnimationFrame(function () {
               for (var i = array.length - 1; i >= 0; i--) {
                 parent.insertBefore(array[i], parent.firstElementChild)
-              }
-              if (this.postsort) {
-                window.setTimeout(this.postsort, 0)
               }
               res()
             }.bind(this))
@@ -584,6 +581,9 @@
       }
       if (what.length > 0) {
         sortHTMLNodes(this.Tbody, {what: what}).then(function () {
+          if (this.postsort) {
+            this.postsort(this.Tbody)
+          }
           this.refreshFilter()
         }.bind(this))
       } else {
@@ -660,7 +660,11 @@
         }
       }
       if (what.length > 0) {
-        sortHTMLNodes(this.Tbody, {what: what})
+        sortHTMLNodes(this.Tbody, {what: what}).then(() => {
+          if (this.postsort) {
+            this.postsort(this.Tbody)
+          }
+        })
       }
     }
 
