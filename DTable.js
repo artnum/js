@@ -132,6 +132,7 @@
     var almostHasValue = function (tr, value, what, translit = null) {
       if (!tr) { return false }
       var node = toNode(tr, what.name)
+      if (!node) { return false }
       var v1 = String(node.innerHTML).toLowerCase().trim()
       var v2 = String(value).toLowerCase().trim()
 
@@ -315,7 +316,7 @@
           return new Promise(function (resolve, reject) {
             var array = []
             for (var i = parent.firstElementChild; i; i = i.nextElementSibling) {
-              if (!i.getAttribute(names.sortIgnore)) {
+              if (!i.getAttribute(names.sortIgnore) && !i.getAttribute(names.filteredOut)) {
                 array.push(i)
               }
             }
@@ -480,21 +481,18 @@
                 break
               default:
                 for (tr = this.Tbody.firstElementChild; tr; tr = tr.nextElementSibling) {
-                  if (!almostHasValue(tr, event.target.value, what, this.transliterate ? this.transliterate : null)) {
-                    if (!tr.getAttribute(names.filteredOut)) {
-                      tr.setAttribute(names.filteredOut, what.name)
-                    }
-                  } else {
-                    if (tr.getAttribute(names.filteredOut) &&
-                        tr.getAttribute(names.filteredOut) === what.name) {
-                      tr.removeAttribute(names.filteredOut)
-                    }
-                  }
+                  this.filterRow(tr, what, event.target.value)
+                }
+                if (this.postsort) {
+                  this.postsort(this.Tbody)
                 }
                 break
             }
           }.bind(this))
-          event.target.appendChild(input)
+          window.requestAnimationFrame(() => {
+            event.target.appendChild(input)
+            input.focus()
+          })
         }
       }.bind(this)
 
@@ -535,7 +533,30 @@
       }
     }
 
-    DTable.prototype.refreshFilter = function () {
+    /* Return true if row has to be filtered out */
+    DTable.prototype.filterRow = function (row, what, value) {
+      let name = false
+      if (row.getAttribute(names.sortIgnore)) { return }
+      if (!almostHasValue(row, value, what, this.transliterate ? this.transliterate : null)) {
+        if (!row.getAttribute(names.filteredOut)) {
+          name = what.name
+        }
+      } else {
+        if (row.getAttribute(names.filteredOut) &&
+            row.getAttribute(names.filteredOut) === what.name) {
+          name = null
+        }
+      }
+      if (name) {
+        row.setAttribute(names.filteredOut, name)
+      } else {
+        if (name === null) {
+          row.removeAttribute(names.filteredOut)
+        }
+      }
+    }
+
+    DTable.prototype.refreshFilter = function (row = null) {
       let tr = this.Thead.firstElementChild
       let what = {name: '', type: ''}
       for (let th = tr.firstElementChild; th; th = th.nextElementSibling) {
@@ -543,20 +564,19 @@
         if (input) {
           what.name = th.getAttribute(names.sortName)
           what.type = th.getAttribute(names.sortType)
-          for (let line = this.Tbody.firstElementChild; line; line = line.nextElementSibling) {
-            if (!almostHasValue(line, input.value, what, this.transliterate ? this.transliterate : null)) {
-              if (!line.getAttribute(names.filteredOut)) {
-                line.setAttribute(names.filteredOut, what.name)
-              }
-            } else {
-              if (line.getAttribute(names.filteredOut) &&
-                  line.getAttribute(names.filteredOut) === what.name) {
-                line.removeAttribute(names.filteredOut)
-              }
+          if (row) {
+            return this.filterRow(row, what, input.value)
+          } else {
+            for (let line = this.Tbody.firstElementChild; line; line = line.nextElementSibling) {
+              this.filterRow(line, what, input.value)
             }
           }
         }
       }
+      if (this.postsort) {
+        this.postsort(this.Tbody)
+      }
+      return null
     }
 
     DTable.prototype.refreshSort = function () {
@@ -581,9 +601,6 @@
       }
       if (what.length > 0) {
         sortHTMLNodes(this.Tbody, {what: what}).then(function () {
-          if (this.postsort) {
-            this.postsort(this.Tbody)
-          }
           this.refreshFilter()
         }.bind(this))
       } else {
@@ -1144,6 +1161,9 @@
         }
         tr.appendChild(td)
       }
+
+      this.refreshFilter(tr)
+
       var current = this.Tbody.firstElementChild
       for (; current; current = current.nextElementSibling) {
         if (String(current.getAttribute(names.id)) === String(row.id)) {
