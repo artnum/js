@@ -1032,7 +1032,22 @@
                 if (entry[this.Column[i].attr]) {
                   value = entry[this.Column[i].attr]
                 } else {
-                  value = ''
+                  let path = this.Column[i].attr.split('.')
+                  if (path.length > 1) {
+                    let root = entry
+                    value = ''
+                    for (let i = 0; i < path.length; i++) {
+                      root = root[path[i]]
+                      if (!root) {
+                        break
+                      }
+                    }
+                    if (root) {
+                      value = root
+                    }
+                  } else {
+                    value = ''
+                  }
                 }
               }
               if (!alt && this.Column[i].type.substr(0, 1) === "'") {
