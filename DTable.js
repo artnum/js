@@ -40,7 +40,8 @@
       includeInSort: 'data-sort-include',
       filteredOut: 'data-filtered-out',
       classInfo: 'data-class',
-      sortIgnore: 'data-sort-ignore'
+      sortIgnore: 'data-sort-ignore',
+      trIsHeader: 'data-header'
     }
 
     var dateValue = function (date, time = true) {
@@ -86,6 +87,7 @@
     var nodeValue = function (node, what) {
       if (!node) { return false }
       node = toNode(node, what.name)
+      if (!node) { return false }
       var value = node.getAttribute(names.sortValue) ? node.getAttribute(names.sortValue) : node.innerText
       var txtVal = value
       if (value === undefined) { return false }
@@ -192,8 +194,13 @@
 
     var cmpNode = function (tr1, tr2, what) {
       var direction = what.direction === 'ASC' ? 1 : -1
-      var [attr1, number1, txt1] = nodeValue(tr1, what)
-      var [attr2, number2, txt2] = nodeValue(tr2, what)
+      let nv1 = nodeValue(tr1, what)
+      let nv2 = nodeValue(tr2, what)
+      if (nv1 === false && nv2 === false) { return direction }
+      if (nv1 === false && nv2 !== false) { return direction }
+      if (nv1 !== false && nv2 === false) { return -direction }
+      var [attr1, number1, txt1] = nv1
+      var [attr2, number2, txt2] = nv2
 
       switch (what.type.toLowerCase()) {
         case 'bool':
@@ -316,21 +323,24 @@
           return new Promise(function (resolve, reject) {
             var array = []
             for (var i = parent.firstElementChild; i; i = i.nextElementSibling) {
-              if (!i.getAttribute(names.sortIgnore) && !i.getAttribute(names.filteredOut)) {
+              if (!i.getAttribute(names.trIsHeader) && !i.getAttribute(names.sortIgnore) && !i.getAttribute(names.filteredOut)) {
                 array.push(i)
               }
             }
             resolve(array)
           })
-        }()).then(function (array) {
-          sort(array, o).then(function (array) {
-            window.requestAnimationFrame(function () {
+        }()).then((array) => {
+          sort(array, o).then((array) => {
+            window.requestAnimationFrame(() => {
+              let firstNode = parent.firstElementChild
+              for (; firstNode && firstNode.getAttribute(names.trIsHeader); firstNode = firstNode.nextElementSibling) ;
               for (var i = array.length - 1; i >= 0; i--) {
-                parent.insertBefore(array[i], parent.firstElementChild)
+                parent.insertBefore(array[i], firstNode)
+                firstNode = array[i]
               }
               res()
-            }.bind(this))
-          }.bind(this))
+            })
+          })
         })
       })
     }
@@ -472,19 +482,27 @@
                 var n = event.target
                 for (; n && n.nodeName !== 'INPUT'; n = n.parentNode) ;
                 n.parentNode.removeChild(n)
-                for (var tr = this.Tbody.firstElementChild; tr; tr = tr.nextElementSibling) {
-                  if (tr.getAttribute(names.filteredOut) &&
-                      tr.getAttribute(names.filteredOut) === what.name) {
-                    tr.removeAttribute(names.filteredOut)
+                for (let tbody = this.Table.firstElementChild; tbody; tbody = tbody.nextElementChild) {
+                  if (tbody.nodeName === 'TBODY') {
+                    for (var tr = this.Tbody.firstElementChild; tr; tr = tr.nextElementSibling) {
+                      if (tr.getAttribute(names.filteredOut) &&
+                          tr.getAttribute(names.filteredOut) === what.name) {
+                        tr.removeAttribute(names.filteredOut)
+                      }
+                    }
                   }
                 }
                 break
               default:
-                for (tr = this.Tbody.firstElementChild; tr; tr = tr.nextElementSibling) {
-                  this.filterRow(tr, what, event.target.value)
-                }
-                if (this.postsort) {
-                  this.postsort(this.Tbody)
+                for (let tbody = this.Table.firstElementChild; tbody; tbody = tbody.nextElementChild) {
+                  if (tbody.nodeName === 'TBODY') {
+                    for (tr = tbody.firstElementChild; tr; tr = tr.nextElementSibling) {
+                      this.filterRow(tr, what, event.target.value)
+                    }
+                    if (this.postsort) {
+                      this.postsort(tbody)
+                    }
+                  }
                 }
                 break
             }
@@ -565,16 +583,25 @@
           what.name = th.getAttribute(names.sortName)
           what.type = th.getAttribute(names.sortType)
           if (row) {
-            return this.filterRow(row, what, input.value)
+            let result = this.filterRow(row, what, input.value)
+            for (let tbody = row; this.postsort && tbody; tbody = tbody.parentNode) {
+              if (row.nodeName === 'TBODY') {
+                this.postsort(row)
+                break
+              }
+            }
+            return result
           } else {
-            for (let line = this.Tbody.firstElementChild; line; line = line.nextElementSibling) {
-              this.filterRow(line, what, input.value)
+            for (let tbody = this.Table.firstElementChild; tbody; tbody = tbody.nextElementSibling) {
+              if (tbody.nodeName === 'TBODY') {
+                for (let line = tbody.firstElementChild; line; line = line.nextElementSibling) {
+                  this.filterRow(line, what, input.value)
+                }
+                if (this.postsort) { this.postsort(tbody) }
+              }
             }
           }
         }
-      }
-      if (this.postsort) {
-        this.postsort(this.Tbody)
       }
       return null
     }
@@ -600,9 +627,13 @@
         }
       }
       if (what.length > 0) {
-        sortHTMLNodes(this.Tbody, {what: what}).then(function () {
-          this.refreshFilter()
-        }.bind(this))
+        for (let tbody = this.Table.firstElementChild; tbody; tbody = tbody.nextElementSibling) {
+          if (tbody.nodeName === 'TBODY') {
+            sortHTMLNodes(this.Tbody, {what: what}).then(function () {
+              this.refreshFilter()
+            }.bind(this))
+          }
+        }
       } else {
         this.refreshFilter()
       }
@@ -677,17 +708,19 @@
         }
       }
       if (what.length > 0) {
-        sortHTMLNodes(this.Tbody, {what: what}).then(() => {
-          if (this.postsort) {
-            this.postsort(this.Tbody)
+        for (let tbody = this.Table.firstElementChild; tbody; tbody = tbody.nextSibling) {
+          if (tbody.nodeName === 'TBODY') {
+            sortHTMLNodes(tbody, {what: what}).then(() => {
+              if (this.postsort) { this.postsort(tbody) }
+            })
           }
-        })
+        }
       }
     }
 
     DTable.prototype.reverseRows = function () {
       var firstChild = this.Tbody.firstElementChild
-
+      for (; firstChild && firstChild.getAttribute(name.trIsHeader); firstChild = firstChild.nextElementSibling) ;
       var display = function () {
         var start = performance.now()
         while (firstChild !== this.Tbody.lastElementChild) {
