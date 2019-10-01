@@ -999,6 +999,30 @@
     }
 
     DTable.prototype.processResult = function (result) {
+
+      let walkValueTree = (object, attribute) => {
+        let value = ''
+        if (object[attribute]) {
+          value = object[attribute]
+        } else {
+          let path = attribute.split('.')
+          if (path.length > 1) {
+            let root = object
+            value = ''
+            for (let i = 0; i < path.length; i++) {
+              root = root[path[i]]
+              if (!root) {
+                break
+              }
+            }
+            if (root) {
+              value = root
+            }
+          }
+        }
+        return value
+      }
+
       if (result.success && result.length > 0) {
         for (var e = 0; e < result.data.length; e++) {
           let entry = result.data[e]
@@ -1055,33 +1079,10 @@
                 if (value === null && this.Column[i].alternative) {
                   alt = true
                   type = 'text'
-                  if (entry[this.Column[i].alternative]) {
-                    value = entry[this.Column[i].alternative]
-                  } else {
-                    value = ''
-                  }
+                  value = walkValueTree(entry, this.Column[i].alternative)
                 }
               } else {
-                if (entry[this.Column[i].attr]) {
-                  value = entry[this.Column[i].attr]
-                } else {
-                  let path = this.Column[i].attr.split('.')
-                  if (path.length > 1) {
-                    let root = entry
-                    value = ''
-                    for (let i = 0; i < path.length; i++) {
-                      root = root[path[i]]
-                      if (!root) {
-                        break
-                      }
-                    }
-                    if (root) {
-                      value = root
-                    }
-                  } else {
-                    value = ''
-                  }
-                }
+                value = walkValueTree(entry, this.Column[i].attr)
               }
               if (!alt && this.Column[i].type.substr(0, 1) === "'") {
                 type = 'text'
