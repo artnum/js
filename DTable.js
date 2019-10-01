@@ -1079,7 +1079,11 @@
                 if (value === null && this.Column[i].alternative) {
                   alt = true
                   type = 'text'
-                  value = walkValueTree(entry, this.Column[i].alternative)
+                  if (this.Column[i].alternative === '%%') {
+                    value = walkValueTree(entry, this.Column[i].vars[0].substring(1))
+                  } else {
+                    value = walkValueTree(entry, this.Column[i].alternative)
+                  }
                 }
               } else {
                 value = walkValueTree(entry, this.Column[i].attr)
