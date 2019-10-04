@@ -482,7 +482,7 @@
                 var n = event.target
                 for (; n && n.nodeName !== 'INPUT'; n = n.parentNode) ;
                 n.parentNode.removeChild(n)
-                for (let tbody = this.Table.firstElementChild; tbody; tbody = tbody.nextElementChild) {
+                for (let tbody = this.Table.firstElementChild; tbody; tbody = tbody.nextElementSibling) {
                   if (tbody.nodeName === 'TBODY') {
                     for (var tr = this.Tbody.firstElementChild; tr; tr = tr.nextElementSibling) {
                       if (tr.getAttribute(names.filteredOut) &&
@@ -493,8 +493,8 @@
                   }
                 }
                 break
-              default:
-                for (let tbody = this.Table.firstElementChild; tbody; tbody = tbody.nextElementChild) {
+             default:
+                for (let tbody = this.Table.firstElementChild; tbody; tbody = tbody.nextElementSibling) {
                   if (tbody.nodeName === 'TBODY') {
                     for (tr = tbody.firstElementChild; tr; tr = tr.nextElementSibling) {
                       this.filterRow(tr, what, event.target.value)
