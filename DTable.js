@@ -773,7 +773,19 @@
       return true
     }
 
+    DTable.prototype.idInTable = function () {
+      let tbodys = this.Table.getElementsByTagName('TBODY')
+      let ids = []
+      for (let i = 0; i < tbodys.length; i++) {
+        for (let j = tbodys[i].firstElementChild; j; j = j.nextElementSibling) {
+          ids.push(j.getAttribute(names.id))
+        }
+      }
+      return ids
+    }
+
     DTable.prototype.refresh = function () {
+      let start = performance.now()
       var params = this.refreshParams
       if (params.indicator) {
         if (params.indicator.name) {
@@ -810,9 +822,33 @@
               }
               this.processResult({success: true, length: data.length, data: data})
             }
-            this.refresh()
+            setTimeout(this.refresh.bind(this), 10000 - (performance.now() - start))
+            this.refreshSort()
           }.bind(this))
         }
+      } else if (params.absent) {
+        Artnum.Query.exec(Artnum.Path.url(this.Table.getAttribute(names.source))).then(async function (result) {
+          let ids = this.idInTable()
+          let newEntries = []
+          let oldEntries = []
+          for (let i = 0; i < result.data.length; i++) {
+            if (ids.indexOf(result.data[i].id) === -1) {
+              newEntries.push(result.data[i])
+            } else {
+              oldEntries.push(result.data[i].id)
+            }
+          }
+          for (let i = ids.pop(); i; i = ids.pop()) {
+            if (oldEntries.indexOf(i) === -1) {
+              this.dropRow(i)
+            }
+          }
+          if (newEntries.length > 0) {
+            this.processResult({success: true, length: newEntries.length, data: newEntries})
+          }
+          setTimeout(this.refresh.bind(this), 10000 - (performance.now() - start))
+          this.refreshSort()
+        }.bind(this))
       }
     }
 
