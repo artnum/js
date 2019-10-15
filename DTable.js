@@ -589,9 +589,7 @@
 
     DTable.prototype.getHeadByName = function (name) {
       let head = this.Thead.firstElementChild.firstElementChild
-      for (; head && head.getAttribute(names.sortName) !== name; head = head.nextElementSibling) {
-        console.log(head.getAttribute(names.sortName), name)
-      }
+      for (; head && head.getAttribute(names.sortName) !== name; head = head.nextElementSibling) ;
       return head
     }
 
@@ -599,7 +597,6 @@
       if (this.search) {
         for (const [key, value] of this.search) {
           let h = this.getHeadByName(key)
-          console.log(h)
           if (h) {
             this.displayFilterBox(h).then((input) => {
               input.value = value
