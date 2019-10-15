@@ -373,6 +373,11 @@
         }
         this.sortOnly = arguments[0].sortOnly
       }
+
+      if (arguments[0].search) {
+        this.search = arguments[0].search
+      }
+
       if (!this.Table) {
         throw Error('No table given')
       }
@@ -458,57 +463,7 @@
             this.doSort(event, true)
           }.bind(this), 250)
         } else {
-          this.mouseClickTimer = null // disable sort
-
-          for (var n = event.target.firstElementChild; n; n = n.firstElementSibling) {
-            if (n.nodeName === 'INPUT' && n.getAttribute('class') === 'filter') {
-              return
-            }
-          }
-
-          var input = document.createElement('INPUT')
-          input.setAttribute('class', 'filter')
-          input.addEventListener('mousedown', (e) => e.stopPropagation())
-          input.addEventListener('mouseup', (e) => e.stopPropagation())
-          input.addEventListener('keyup', function (event) {
-            var th = event.target
-            for (; th && th.nodeName !== 'TH'; th = th.parentNode) ;
-            var what = {name: '', type: ''}
-            what.name = th.getAttribute(names.sortName)
-            what.type = th.getAttribute(names.sortType)
-
-            switch (event.key) {
-              case 'Escape':
-                var n = event.target
-                for (; n && n.nodeName !== 'INPUT'; n = n.parentNode) ;
-                n.parentNode.removeChild(n)
-                for (let tbody = this.Table.firstElementChild; tbody; tbody = tbody.nextElementSibling) {
-                  if (tbody.nodeName === 'TBODY') {
-                    for (var tr = this.Tbody.firstElementChild; tr; tr = tr.nextElementSibling) {
-                      if (tr.getAttribute(names.filteredOut) &&
-                          tr.getAttribute(names.filteredOut) === what.name) {
-                        tr.removeAttribute(names.filteredOut)
-                      }
-                    }
-                  }
-                }
-                break
-             default:
-                for (let tbody = this.Table.firstElementChild; tbody; tbody = tbody.nextElementSibling) {
-                  if (tbody.nodeName === 'TBODY') {
-                    for (tr = tbody.firstElementChild; tr; tr = tr.nextElementSibling) {
-                      this.filterRow(tr, what, event.target.value)
-                    }
-                    if (this.postsort) {
-                      this.postsort(tbody)
-                    }
-                  }
-                }
-                break
-            }
-          }.bind(this))
-          window.requestAnimationFrame(() => {
-            event.target.appendChild(input)
+          this.displayFilterBox(event.target).then((input) => {
             input.focus()
           })
         }
@@ -544,11 +499,125 @@
       }
     }
 
-    DTable.prototype.run = function () {
-      this.processHead()
-      if (!this.sortOnly) {
-        this.query()
+    DTable.prototype.displayFilterBox = function (th) {
+      this.mouseClickTimer = null // disable sort
+
+      for (var n = th.firstElementChild; n; n = n.firstElementSibling) {
+        if (n.nodeName === 'INPUT' && n.getAttribute('class') === 'filter') {
+          return
+        }
       }
+
+      var input = document.createElement('INPUT')
+      input.setAttribute('class', 'filter')
+      input.addEventListener('mousedown', (e) => e.stopPropagation())
+      input.addEventListener('mouseup', (e) => e.stopPropagation())
+      input.addEventListener('keydown', function (event) {
+        switch (event.key) {
+          case 'Tab':
+            this.runFilter(this.prepareFilter(event.target), event.target.value)
+            break
+          case 'Delete':
+          case 'Backspace':
+            let value = event.target.value
+            if (value.substring(value.length - 1) === ' ') {
+              let what = this.prepareFilter(event.target)
+              this.runFilter(what, value.substring(0, value.length - 1))
+            }
+            break
+        }
+      }.bind(this))
+      input.addEventListener('keyup', function (event) {
+        let value = event.target.value
+        let what = this.prepareFilter(event.target)
+        switch (event.key) {
+          case 'Escape':
+            this.resetFilter(what, event.target)
+            break
+          case ' ':
+            value = value.substring(0, value.length - 1)
+            /* Fall through */
+          case 'Enter':
+            this.runFilter(what, value)
+            break
+        }
+      }.bind(this))
+
+      return new Promise((resolve, reject) => {
+        window.requestAnimationFrame(() => {
+          th.appendChild(input)
+          resolve(input)
+        })
+      })
+    }
+
+    DTable.prototype.runFilter = function (what, value) {
+      for (let tbody = this.Table.firstElementChild; tbody; tbody = tbody.nextElementSibling) {
+        if (tbody.nodeName === 'TBODY') {
+          for (let tr = tbody.firstElementChild; tr; tr = tr.nextElementSibling) {
+            this.filterRow(tr, what, value)
+          }
+          if (this.postsort) {
+            this.postsort(tbody)
+          }
+        }
+      }
+    }
+
+    DTable.prototype.prepareFilter = function (th) {
+      for (; th && th.nodeName !== 'TH'; th = th.parentNode) ;
+      var what = {name: '', type: ''}
+      what.name = th.getAttribute(names.sortName)
+      what.type = th.getAttribute(names.sortType)
+      return what
+    }
+
+    DTable.prototype.resetFilter = function (what, n) {
+      for (; n && n.nodeName !== 'INPUT'; n = n.parentNode) ;
+      n.parentNode.removeChild(n)
+      for (let tbody = this.Table.firstElementChild; tbody; tbody = tbody.nextElementSibling) {
+        if (tbody.nodeName === 'TBODY') {
+          for (var tr = this.Tbody.firstElementChild; tr; tr = tr.nextElementSibling) {
+            if (tr.getAttribute(names.filteredOut) &&
+                tr.getAttribute(names.filteredOut) === what.name) {
+              tr.removeAttribute(names.filteredOut)
+            }
+          }
+        }
+      }
+    }
+
+    DTable.prototype.getHeadByName = function (name) {
+      let head = this.Thead.firstElementChild.firstElementChild
+      for (; head && head.getAttribute(names.sortName) !== name; head = head.nextElementSibling) {
+        console.log(head.getAttribute(names.sortName), name)
+      }
+      return head
+    }
+
+    DTable.prototype.run = function () {
+      if (this.search) {
+        for (const [key, value] of this.search) {
+          let h = this.getHeadByName(key)
+          console.log(h)
+          if (h) {
+            this.displayFilterBox(h).then((input) => {
+              input.value = value
+              let what = this.prepareFilter(h)
+              this.runFilter(what, input.value)
+            })
+          }
+        }
+      }
+
+      return new Promise((resolve, reject) => {
+        this.processHead()
+        if (!this.sortOnly) {
+          this.query().then(() => resolve())
+        } else {
+          resolve()
+        }
+      })
     }
 
     /* Return true if row has to be filtered out */
@@ -1035,7 +1104,6 @@
     }
 
     DTable.prototype.processResult = function (result) {
-
       let walkValueTree = (object, attribute) => {
         let value = ''
         if (object[attribute]) {
@@ -1151,33 +1219,45 @@
       }
     }
 
-    DTable.prototype.query = async function (offset = 0, max = null) {
-      var opts = {params: {}}
-      if (this.Table.getAttribute(names.options)) {
-        var _opts = toJSON(this.Table.getAttribute(names.options))
-        for (var k in _opts) {
-          switch (k) {
-            default:
-              opts[k] = _opts[k]
-              break
-            case 'parameters':
-              opts.params = _opts[k]
-              this.searchParams = _opts[k]
+    DTable.prototype.query = function (offset = 0, max = null) {
+      return new Promise((resolve, reject) => {
+        var opts = {params: {}}
+        if (this.Table.getAttribute(names.options)) {
+          var _opts = toJSON(this.Table.getAttribute(names.options))
+          for (var k in _opts) {
+            switch (k) {
+              default:
+                opts[k] = _opts[k]
+                break
+              case 'parameters':
+                opts.params = _opts[k]
+                this.searchParams = _opts[k]
+            }
           }
+          new Promise((resolve, reject) => {
+            if (!max) {
+              Artnum.Query.exec(Artnum.Path.url(this.Table.getAttribute(names.source) + '/.count', opts)).then((result) => {
+                resolve(result)
+              })
+            } else {
+              resolve(max)
+            }
+          }).then((max) => {
+            opts.params.limit = `${offset},250`
+            Artnum.Query.exec(Artnum.Path.url(this.Table.getAttribute(names.source), opts)).then(function (result) {
+              this.processResult(result)
+              if (parseInt(result.length) + offset < parseInt(max.length)) {
+                this.query(offset + parseInt(result.length), max).then(() => {
+                  this.refresh()
+                })
+              } else {
+                this.refresh()
+              }
+              resolve()
+            }.bind(this))
+          })
         }
-        if (!max) {
-          max = await Artnum.Query.exec(Artnum.Path.url(this.Table.getAttribute(names.source) + '/.count', opts))
-        }
-        opts.params.limit = `${offset},250`
-        Artnum.Query.exec(Artnum.Path.url(this.Table.getAttribute(names.source), opts)).then(function (result) {
-          this.processResult(result)
-          if (parseInt(result.length) + offset < parseInt(max.length)) {
-            this.query(offset + parseInt(result.length), max)
-          } else {
-            this.refresh()
-          }
-        }.bind(this))
-      }
+      })
     }
 
     DTable.prototype.addPfunc = function (name, funktion) {
