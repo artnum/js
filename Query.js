@@ -90,7 +90,13 @@
                   }
 
                   if (valid) {
-                    resolve(JSON.parse(body))
+                    try {
+                      let object = JSON.parse(body)
+                      resolve(object)
+                    } catch (e) {
+                      console.log(e)
+                      resolve({success: false, type: 'error', message: 'JSON error', data: [], length: 0})
+                    }
                   } else {
                     resolve({success: false, type: 'error', message: 'Invalid data from server', data: [], length: 0})
                   }
