@@ -165,18 +165,44 @@
             return false
         }
       } else {
-        var special = '*?+'
-        var regexp = false
-        for (var i = 0; i < special.length; i++) {
-          var pos = v2.indexOf(special[i])
-          if (pos !== -1) {
-            if (v2[pos - 1] !== '\\') {
-              regexp = true
-              v2 = v2.split(special[i]).join(`.${special[i]}`)
-            } else {
-              v2 = v2.split(`\\${special[i]}`).join(special[i])
+        switch (v2[0]) {
+          default:
+            var special = '*?+'
+            var regexp = false
+            for (var i = 0; i < special.length; i++) {
+              var pos = v2.indexOf(special[i])
+              if (pos !== -1) {
+                if (v2[pos - 1] !== '\\') {
+                  regexp = true
+                  v2 = v2.split(special[i]).join(`.${special[i]}`)
+                } else {
+                  v2 = v2.split(`\\${special[i]}`).join(special[i])
+                }
+              }
             }
-          }
+            break
+          case '>':
+            if (v2[1] === '=') {
+              if (v2.substring(2).localeCompare(v1.substring(0, v2.length - 2)) <= 0) {
+                return trueValue
+              }
+            } else {
+              if (v2.substring(1).localeCompare(v1.substring(0, v2.length - 1)) < 0) {
+                return trueValue
+              }
+            }
+            return !trueValue
+          case '<':
+            if (v2[1] === '=') {
+              if (v2.substring(2).localeCompare(v1.substring(0, v2.length - 2)) >= 0) {
+                return trueValue
+              }
+            } else {
+              if (v2.substring(1).localeCompare(v1.substring(0, v2.length - 1)) > 0) {
+                return trueValue
+              }
+            }
+            return !trueValue
         }
       }
 
@@ -403,6 +429,12 @@
         this.postsort = null
       }
 
+      if (arguments[0].checkUrl) {
+        this.checkUrl = arguments[0].checkUrl
+      } else {
+        this.checkUrl = null
+      }
+      
       if (arguments[0].head) {
         if (isHTMLElement(arguments[0].head)) {
           this.Thead = arguments[0].head
@@ -496,6 +528,14 @@
       this.Table.classList.add('dtable')
       if (!arguments[1]) {
         this.run()
+      }
+    }
+
+    DTable.prototype.checkURL = function (url) {
+      if (this.checkUrl) {
+        return this.checkUrl(url)
+      } else {
+        return true
       }
     }
 
@@ -993,7 +1033,7 @@
     }
 
     /* TODO merge getSub and getSub2 */
-    var getSub = async function (subquery, vars, entry) {
+    var getSub = async function (subquery, vars, entry, checkURL) {
       var sub = null
       if (subquery[0] === '@') {
         sub = parseSub(subquery)
@@ -1023,6 +1063,7 @@
         var queries = getQueries(sub.url, varsData, 0)
         var retval = []
         for (i = 0; i < queries.length; i++) {
+          if (!checkURL(queries[i])) { continue }
           var url = Artnum.Path.url(queries[i])
           var val
           if (Cache[String(url)]) {
@@ -1062,7 +1103,7 @@
       return retval
     }
 
-    var getSub2 = async function (subquery, attr, vars, entry) {
+    var getSub2 = async function (subquery, attr, vars, entry, checkURL) {
       var sub = null
       if (subquery[0] === '@') {
         sub = parseSub(subquery)
@@ -1078,21 +1119,25 @@
           }
         }
         if (sub) {
-          var url = Artnum.Path.url(sub.url)
-          var val
-          if (Cache[String(url)]) {
-            val = Cache[String(url)]
-          } else {
-            val = await Artnum.Query.exec(url)
-          }
-          if (val.success && val.length > 0) {
-            var _v
-            if (val.length === 1 && !Array.isArray(val.data)) {
-              _v = getVar(val.data, '_' + attr)
+          if (checkURL(sub.url)) {
+            var url = Artnum.Path.url(sub.url)
+            var val
+
+            if (Cache[String(url)]) {
+              val = Cache[String(url)]
             } else {
-              _v = getVar(val.data[0], '_' + attr)
+              val = await Artnum.Query.exec(url)
+              Cache[String(url)] = val
             }
-            if (_v) { return _v }
+            if (val.success && val.length > 0) {
+              var _v
+              if (val.length === 1 && !Array.isArray(val.data)) {
+                _v = getVar(val.data, '_' + attr)
+              } else {
+                _v = getVar(val.data[0], '_' + attr)
+              }
+              if (_v) { return _v }
+            }
           }
         }
       }
@@ -1141,7 +1186,7 @@
                   for (var x = 0; x < condition.values.length; x++) {
                     var tmp = condition.values[x]
                     if (tmp.subquery) {
-                      val[x] = await getSub(tmp.subquery, tmp.vars, entry)
+                      val[x] = await getSub(tmp.subquery, tmp.vars, entry, this.checkURL.bind(this))
                     } else if (tmp.vars) {
                       val[x] = [getVar(entry, tmp.vars[0])]
                     } else if (tmp.value) {
@@ -1176,7 +1221,7 @@
               let type = this.Column[i].type
               let alt = false
               if (this.Column[i].subquery !== null) {
-                value = await getSub2(this.Column[i].subquery, this.Column[i].attr, this.Column[i].vars, entry)
+                value = await getSub2(this.Column[i].subquery, this.Column[i].attr, this.Column[i].vars, entry, this.checkURL.bind(this))
                 if (value === null && this.Column[i].alternative) {
                   alt = true
                   type = 'text'
