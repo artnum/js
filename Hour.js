@@ -1,12 +1,14 @@
 /* eslint-env worker, browser */
 
 function Hour (initValue = null) { // eslint-disable-line
-  var Hour = {value: 0} // up to second
+  var Hour = {value: 0.0} // up to second
 
   Hour.format = function (separator = ':') {
     var hour = Math.trunc(this.value / 3600)
-    var minute = Math.trunc(((this.value / 3600) - hour) * 60)
-    var second = Math.trunc(((((this.value / 3600) - hour) * 60) - minute) * 60)
+    var minute = Math.trunc(Math.round((this.value / 3600 - hour) * 60))
+    var second = Math.round(this.value - (minute * 60) - (hour * 3600))
+    if (second < 0) { second += 60 }
+    if (second === 60) { second = 0 }
 
     if (hour < 10) { hour = '0' + String(hour) } else { hour = String(hour) }
     if (minute < 10) { minute = '0' + String(minute) } else { minute = String(minute) }
@@ -57,6 +59,7 @@ function Hour (initValue = null) { // eslint-disable-line
         }
       }
     }
+
     return intValue * 60
   }
 
