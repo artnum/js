@@ -173,19 +173,19 @@ var Select = function (input, store, options = {allowFreeText: true, realSelect:
     if (event.type === 'focus') {
       input.setSelectionRange(0, input.value.length)
     }
-    if (event.key) {
-      delete input.dataset.value
-    }
     switch (event.key) {
       case 'Enter':
         for (let n = list.firstElementChild; n; n = n.nextElementSibling) {
           if (n.dataset.hover === '1') {
+            /* select item in the list and block some on keyup enter that send form if 
+             * listener setup as so (if setup before this one it has no effet)
+             */
+            event.stopImmediatePropagation()
             select(n)
             degenerate()
-            return
           }
         }
-        break
+        return
       case 'ArrowUp':
       case 'ArrowDown':
       case 'PageUp':
