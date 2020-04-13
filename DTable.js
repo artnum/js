@@ -937,6 +937,7 @@
           let ids = this.idInTable()
           let newEntries = []
           let oldEntries = []
+          if (result.data === null) { return }
           for (let i = 0; i < result.data.length; i++) {
             if (ids.indexOf(result.data[i].id) === -1) {
               newEntries.push(result.data[i])
