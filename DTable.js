@@ -1151,6 +1151,7 @@
         })
 
         p.then((results) => {
+          if (!results) { resolve(null); return }
           if (results.length > 0) {
             let entry = Array.isArray(results.data) ? results.data[0] : results.data
             entries.push(entry)
@@ -1622,29 +1623,6 @@
         } else {
           this.Column[i].value = parseAttributes(th[i].innerText)
         }
-        console.log(this.Column[i])
-/*       if (th[i].getAttribute(names.attribute)) {
-          var attr = th[i].getAttribute(names.attribute)
-          if (attr[0] === '@') {
-            attr = /^(@[^ ]+) (.*)/.exec(attr)
-            var vars = attr[1].match(/(\$[a-zA-Z0-9._\-:]+)+/g)
-            var alt = attr[2].split('|', 2)
-            if (alt.length > 1) {
-              var at = alt[0].split(':', 2)
-              alt = alt[1]
-            } else {
-              at = attr[2].split(':', 2)
-              alt = null
-            }
-            this.Column[i] = {attr: at[0], subquery: attr[1], vars: vars, type: at[1] ? at[1] : 'text', sortName: sortName, classInfo: classInfo, alternative: alt}
-          } else {
-            at = attr.split(':', 2)
-            this.Column[i] = {attr: at[0], subquery: null, vars: [], type: at[1] ? at[1] : 'text', sortName: sortName, classInfo: classInfo, alternative: null}
-          }
-        } else {
-          this.Column[i] = {attr: th[i].innerText, subquery: null, vars: [], type: 'text', sortName: sortName, classInfo: classInfo, alternative: null}
-        }*/
-        
         if (this.Column[i].type !== 'text' && !th[i].getAttribute(names.sortType)) {
           th[i].setAttribute(names.sortType, this.Column[i].type)
         }
@@ -1653,52 +1631,6 @@
         } else {
           this.Column[i].process = null
         }
-/*
-        if (th[i].getAttribute(names.condition)) {
-          attr = th[i].getAttribute(names.condition)
-          attr = attr.split(' ', 3)
-
-          var op = null
-          if (attr.length === 3) {
-            switch (attr[2].toLowerCase()) {
-              case 'lt':
-              case 'gt':
-              case 'eq':
-              case 'ne':
-              case 'lte':
-              case 'gte':
-                op = attr[2].toLowerCase()
-                break
-            }
-          }
-
-          if (op) {
-            var cond = {operation: op, values: [null, null], type: 'text'}
-            for (var k = 0; k < 2; k++) {
-              at = attr[k].split(':', 2)
-              if (at.length < 2 && k > 0 && !cond.type) {
-                cond.type = 'text'
-              } else if (at.length > 1) {
-                cond.type = at[1]
-              }
-
-              attr[k] = at[0]
-              if (attr[k][0] === '@') {
-                vars = attr[k].match(/(\$[a-zA-Z0-9._\-:]+)+/g)
-                cond.values[k] = {subquery: attr[k], vars: vars}
-              } else {
-                if (attr[k][0] === '$') {
-                  cond.values[k] = {subquery: null, vars: [attr[k]]}
-                } else {
-                  cond.values[k] = {subquery: null, value: attr[k]}
-                }
-              }
-            }
-            if (cond) {
-              this.Column[i].condition = cond
-            }
-          }
-        }*/
       }
     }
 
