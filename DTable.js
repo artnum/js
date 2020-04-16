@@ -14,7 +14,7 @@
   var Artnum = global.Artnum
 
   global.Artnum.DTable = (function () {
-    var Cache = {}
+    var CACHE = {}
     var isHTMLElement = function (x) {
       return (typeof HTMLElement === 'object' ? x instanceof HTMLElement : x && typeof x === 'object' && x !== null && x.nodeType === Node.ELEMENT_NODE && typeof x.nodeName === 'string')
     }
@@ -434,7 +434,7 @@
       } else {
         this.checkUrl = null
       }
-      
+
       if (arguments[0].head) {
         if (isHTMLElement(arguments[0].head)) {
           this.Thead = arguments[0].head
@@ -981,36 +981,6 @@
       return values
     }
 
-    var getVar = function (entry, varname) {
-      var v = varname.substr(1).split('.')
-      var e = entry
-      if (!e) { return null }
-      for (var i = 0; i < v.length; i++) {
-        if (e[v[i]]) {
-          e = e[v[i]]
-        } else {
-          e = null
-          break
-        }
-      }
-      return e
-    }
-
-    var parseSub = function (subquery) {
-      var sub = subquery.split(';')
-      if (sub.length > 0) {
-        var url = sub[0].substr(1)
-        var val = []
-        for (var i = 1; i < sub.length; i++) {
-          val.push(sub[i])
-        }
-
-        return {url: url, val: val}
-      } else {
-        return {url: subquery.substr(1), val: null}
-      }
-    }
-
     var getQueries = function (url, vars, idx) {
       var queries = []
       var q = url
@@ -1033,151 +1003,240 @@
       return queries
     }
 
-    /* TODO merge getSub and getSub2 */
-    var getSub = async function (subquery, vars, entry, checkURL) {
-      var sub = null
-      if (subquery[0] === '@') {
-        sub = parseSub(subquery)
+    var walkValueTree = (object, attribute) => {
+      let value = null
+      if (!object) { return value }
+      if (object[attribute]) {
+        value = object[attribute]
+      } else {
+        let path = attribute.split('.')
+        if (path.length > 1) {
+          let root = object
+          value = null
+          for (let i = 0; i < path.length; i++) {
+            root = root[path[i]]
+            if (!root) {
+              break
+            }
+          }
+          if (root) {
+            value = root
+          }
+        }
+      }
+      return value
+    }
+
+    /* escape for regexp usage ... keep * as is */
+    var REEscape = function (text) {
+      const specials = [
+        '/', '.', '+', '?', '|',
+        '(', ')', '[', ']', '{', '}', '\\'
+      ]
+      const sRE = new RegExp(
+        '(\\' + specials.join('|\\') + ')', 'g'
+      )
+      return text.replace(sRE, '\\$1')
+    }
+    var checkCondition = function (value, attribute) {
+      let syntax = attribute.condition.syntax ? attribute.condition.syntax : attribute.syntax
+      return compareValue(attribute.condition.operation, value, attribute.condition.value, syntax)
+    }
+
+    var compareValue = function (operation, v1, v2, syntax) {
+      switch (syntax) {
+        case 'bool':
+        case 'boolean':
+          if (v1.toLowerCase() === 'true' || parseInt(v1)) {
+            v1 = true
+          } else {
+            v1 = false
+          }
+          if (v2.toLowerCase() === 'true' || parseInt(v2)) {
+            v2 = true
+          } else {
+            v2 = false
+          }
+          break
+        case 'number':
+        case 'integer':
+          v1 = parseInt(v1)
+          v2 = parseInt(v2)
+          break
+        case 'money':
+        case 'float':
+          v1 = parseFloat(v1)
+          v2 = parseFloat(v2)
+          break
+        case 'string':
+        case 'text':
+          v1 = String(v1)
+          v2 = String(v2)
+          break
+        case 'date':
+          v1 = dateValue(v1, false)
+          v2 = dateValue(v2, false)
+          break
+        case 'datetime':
+          v1 = dateValue(v1)
+          v2 = dateValue(v2)
+          break
+        case 'time':
+          v1 = timeValue(v1)
+          v2 = timeValue(v2)
+          break
       }
 
-      if (sub) {
-        var queryCount = 0
-        var varsData = []
-        for (var i = 0; i < vars.length; i++) {
-          let v = getVar2(entry, vars[i])
-          if (v) {
-            if (!Array.isArray(v)) {
-              v = [v]
-            }
-            if (v.length > 0) {
-              varsData.push({val: v, name: vars[i]})
-              queryCount += v.length
-            }
+      switch (operation) {
+        case 'eq': return v1 === v2
+        case 'ne': return v1 !== v2
+        case 'gt': return v1 > v2
+        case 'lt': return v1 < v2
+        case 'gte': return v1 >= v2
+        case 'lte': return v1 <= v2
+        case 'like':
+        case 'unlike':
+          v1 = String(v1)
+          v2 = REEscape(String(v2)).replace(/\*/g, '.*')
+          let exp = new RegExp(v2, 'i')
+          if (operation === 'like') {
+            return exp.test(v1)
           } else {
-            break
+            return !exp.test(v1)
+          }
+      }
+    }
+
+    DTable.prototype.subQuery = function (subquery, entries) {
+      return new Promise(async function (resolve, reject) {
+        let url = null
+        let value = subquery.value
+        while (value && value.type === 'query') {
+          await this.subQuery(subquery.value, entries)
+          value = value.value
+        }
+
+        if (subquery.vars) {
+          for (let k in subquery.vars) {
+            let subvar = null
+            let i = 0
+            while (subvar === null && i < entries.length) {
+
+              subvar = walkValueTree(entries[i++], subquery.vars[k])
+            }
+            if (subvar === null) { resolve(null); return }
+            url = subquery.url.replace(k, subvar)
           }
         }
 
-        if (queryCount > 5) {
-          console.warn('Number of needed query for condition ', queryCount, entry)
+        if (this.URLPrefix) {
+          url = this.URLPrefix + url
         }
-        var queries = getQueries(sub.url, varsData, 0)
-        var retval = []
-        for (i = 0; i < queries.length; i++) {
-          if (!checkURL(queries[i])) { continue }
-          var url = Artnum.Path.url(queries[i])
-          var val
-          if (Cache[String(url)]) {
-            val = Cache[String(url)]
-          } else {
-            val = await Artnum.Query.exec(url)
-            Cache[String(url)] = val
-          }
 
-          if (val.success && val.length > 0) {
-            if (!Array.isArray(val.data)) {
-              val.data = [val.data]
-            }
-            if (!sub.val) {
-              val.data.forEach(function (v) {
-                retval.push(String(v))
+        let p = new Promise((resolve, reject) => {
+          if (CACHE[url]) {
+            resolve(CACHE[url])
+          } else {
+            fetch(url).then((response) => {
+              if (!response.ok) {
+                resolve(null)
+                return
+              }
+              response.json().then((results) => {
+                CACHE[url] = results
+                resolve(CACHE[url])
               })
-            } else {
-              val.data.forEach(function (val) {
-                var vals = []
-                sub.val.forEach(function (v) {
-                  var _v = getVar(val, '_' + v)
-                  if (_v) {
-                    vals.push(_v)
-                  }
-                })
-                if (vals.length === 1) {
-                  retval.push(vals[0])
-                } else if (vals.length > 1) {
-                  retval.push(vals.join(' '))
+            })
+          }
+        })
+
+        p.then((results) => {
+          if (results.length > 0) {
+            let entry = Array.isArray(results.data) ? results.data[0] : results.data
+            entries.push(entry)
+            if (value === null) { resolve(null); return }
+            if (value.type === 'attr') {
+              let retVal = null
+              for (let i = entries.length - 1; i >= 0; i--) {
+                retVal = walkValueTree(entries[i], value.value)
+                if (retVal !== null) { break }
+              }
+              if (subquery.condition) {
+                if (!checkCondition(retVal, subquery)) {
+                  resolve(null)
+                } else {
+                  resolve(retVal)
                 }
-              })
-            }
-          }
-        }
-      }
-      return retval
-    }
-
-    var getSub2 = async function (subquery, attr, vars, entry, checkURL) {
-      var sub = null
-      if (subquery[0] === '@') {
-        sub = parseSub(subquery)
-      }
-      if (sub) {
-        for (var i = 0; i < vars.length; i++) {
-          var v = getVar(entry, vars[i])
-          if (v) {
-            sub.url = sub.url.replace(vars[i], v)
-          } else {
-            sub = null
-            break
-          }
-        }
-        if (sub) {
-          if (checkURL(sub.url)) {
-            var url = Artnum.Path.url(sub.url)
-            var val
-
-            if (Cache[String(url)]) {
-              val = Cache[String(url)]
-            } else {
-              val = await Artnum.Query.exec(url)
-              Cache[String(url)] = val
-            }
-            if (val.success && val.length > 0) {
-              var _v
-              if (val.length === 1 && !Array.isArray(val.data)) {
-                _v = getVar(val.data, '_' + attr)
               } else {
-                _v = getVar(val.data[0], '_' + attr)
+                resolve(retVal)
               }
-              if (_v) { return _v }
+              return
             }
           }
-        }
-      }
-
-      return null
+          resolve(null)
+        })
+      }.bind(this))
     }
 
-    DTable.prototype.processResult = function (result) {
-      let walkValueTree = (object, attribute) => {
-        let value = ''
-        if (object[attribute]) {
-          value = object[attribute]
-        } else {
-          let path = attribute.split('.')
-          if (path.length > 1) {
-            let root = object
-            value = ''
-            for (let i = 0; i < path.length; i++) {
-              root = root[path[i]]
-              if (!root) {
-                break
-              }
-            }
-            if (root) {
-              value = root
-            }
-          }
-        }
-        return value
-      }
-
+    DTable.prototype.processResult = async function (result) {
       if (result.success && result.length > 0) {
         for (var e = 0; e < result.data.length; e++) {
           let entry = result.data[e]
           this.isNewer(entry)
+          let row = []
+          let dropRow = false
+          for (let i = 0; i < this.Column.length; i++) {
+            let value = null
+            let syntax = 'string'
+            let entries = []
+            for (let j = 0; j < this.Column[i].value.length; j++) {
+              syntax = this.Column[i].value[j].syntax
+              switch (this.Column[i].value[j].type) {
+                case 'string':
+                  value = this.Column[i].value[j].value
+                  break
+                case 'attr':
+                  value = walkValueTree(entry, this.Column[i].value[j].value)
+                  break
+                case 'query':
+                  entries.push(entry)
+                  value = await this.subQuery(this.Column[i].value[j], entries)
+                  break
+              }
+
+              if (this.Column[i].value[j].condition) {
+                dropRow = !checkCondition(value, this.Column[i].value[j])
+                if (dropRow) { break }
+              }
+              /* first non-null value do the trick */
+              if (value !== null) { break }
+            }
+            if (dropRow) {
+              this.dropRow(entry[this.EntryId])
+              break
+            }
+            row.push({
+              value: value,
+              sortValue: value,
+              type: syntax,
+              sortName: this.Column[i].sortName,
+              classInfo: this.Column[i].classInfo
+            })
+          }
+          if (dropRow) { continue }
+          this.row({id: entry[this.EntryId], content: row})
+        }
+        this.refreshSort()
+      }
+/*          
+          continue
+          
+          console.log(entry)
+          
           ;(new Promise(async function (resolve, reject) {
             var row = []
 
-            /* Verify confition first */
+
             for (var i = 0; i < this.Column.length; i++) {
               var value = null
               if (this.Column[i].condition) {
@@ -1217,7 +1276,8 @@
                 }
               }
             }
-            /* Process attribute */
+
+
             for (i = 0; i < this.Column.length; i++) {
               let type = this.Column[i].type
               let alt = false
@@ -1235,6 +1295,7 @@
               } else {
                 value = walkValueTree(entry, this.Column[i].attr)
               }
+
               if (!alt && this.Column[i].type.substr(0, 1) === "'") {
                 type = 'text'
                 value = this.Column[i].type.replace('%%', value)
@@ -1259,7 +1320,7 @@
         }
 
         this.refreshSort()
-      }
+      }*/
     }
 
     DTable.prototype.query = function (offset = 0, max = null) {
@@ -1398,6 +1459,146 @@
       }.bind(this))
     }
 
+    var parseCondition = function (any) {
+      /* cond : anything{_op_:_syntax_>_value_ 
+       * ex. : displayname{le:text>Jean-Paul
+       */
+      let cond = /(.+)\{([a-zA-Z]+)(?::([a-zA-Z]+))?>([^`]*)$/.exec(any)
+      if (cond && cond[0] === any) {
+        let c = {type: 'condition'}
+        switch (cond[2].toLowerCase()) {
+          case 'eq':
+          case 'ne':
+          case 'gt':
+          case 'lt':
+          case 'gte':
+          case 'lte':
+          case 'like':
+          case 'unlike':
+            c.operation = cond[2].toLowerCase()
+            break
+          default: return null
+        }
+        if (cond[3]) {
+          switch (cond[3].toLowerCase()) {
+            case 'bool':
+            case 'boolean':
+            case 'number':
+            case 'integer':
+            case 'money':
+            case 'float':
+            case 'string':
+            case 'text':
+            case 'date':
+            case 'datetime':
+            case 'time':
+              c.syntax = cond[3].toLowerCase()
+              break
+            default:
+              c.syntax = 'string'
+              break
+          }
+        } else {
+          c.syntax = 'string'
+        }
+        c.value = cond[4]
+        return [cond[1], c]
+      }
+      return null
+    }
+
+    var parseSubQuery = function (subquery) {
+      let subs = /^(?:@([^ ]+))\s(.*)/.exec(subquery)
+      if (!subs) { return null }
+      let attr = {
+        type: 'query',
+        url: subs[1],
+        value: parseAttribute(subs[2]),
+        vars: parseUrlVariable(subs[1])
+      }
+
+      return attr
+    }
+
+    var parseString = function (string) {
+      let str = /^(?:'([^'])'|#(.*))/.exec(string)
+      if (!str) { return null }
+      return str[1] ? str[1] : str[2]
+    }
+
+    var parseAttr = function (attribute) {
+      let attr = attribute.split(':')
+      if (attr.length >= 2) {
+        return {type: 'attr', syntax: attr[1], value: attr[0]}
+      } else {
+        return {type: 'attr', syntax: 'string', value: attr[0]}
+      }
+    }
+
+    var parseAttribute = function (attr) {
+      let cond = parseCondition(attr)
+      if (cond !== null) {
+        attr = cond[0]
+      }
+      /* to block condition from applying at the upper level, we add ` at then end
+       * of the condition. In those case :
+       *
+       *  @url @url2 x?eq>d -> the condition apply to @url
+       *  @url @url2 x?eq>d` -> the condition apply to @url2
+       */
+      if (attr.substring(attr.length - 1) === '`') {
+        attr = attr.substring(0, attr.length - 1)
+      }
+      let o = null
+      switch (attr.substring(0, 1)) {
+        /* subquery */
+        case '@':
+          o = parseSubQuery(attr)
+          break
+          /* string */
+        case '\'':
+          /* fall through */
+        case '#':
+          o = {type: 'string', value: parseString(attr)}
+          break
+          /* attribute */
+        default:
+          o = parseAttr(attr)
+      }
+      if (!o) { return null }
+      if (cond) {
+        o.condition = cond[1]
+      }
+      return o
+    }
+
+    var parseAttributes = function (attr) {
+      if (!attr) { return null }
+      let attrValues = []
+      let values = attr.split('|')
+      for (let i = 0; i < values.length; i++) {
+        let o = parseAttribute(values[i])
+        if (o !== null) {
+          attrValues.push(o)
+        }
+      }
+
+      return attrValues
+    }
+
+    var parseUrlVariable = function (url) {
+      const regexp = /\$([a-zA-Z0-9:_\-.]+)/g
+      let vars = {}
+      let m
+      while ((m = regexp.exec(url)) !== null) {
+        if (m.index === regexp.lastIndex) {
+          regexp.lastIndex++
+        }
+        vars[m[0]] = m[1]
+      }
+      return vars
+    }
+
     DTable.prototype.processHead = function () {
       var th = this.Thead.getElementsByTagName('TH')
       this.Column = []
@@ -1408,12 +1609,21 @@
         if (th[i].getAttribute(names.classInfo)) {
           classInfo = th[i].getAttribute(names.classInfo)
         }
+        this.Column[i] = {classInfo: classInfo}
         if (th[i].getAttribute(names.sortName)) {
           sortName = th[i].getAttribute(names.sortName)
         } else {
           th[i].setAttribute(names.sortName, sortName)
         }
-        if (th[i].getAttribute(names.attribute)) {
+        this.Column[i].sortName = sortName
+        let attr = th[i].getAttribute(names.attribute)
+        if (attr) {
+          this.Column[i].value = parseAttributes(attr)
+        } else {
+          this.Column[i].value = parseAttributes(th[i].innerText)
+        }
+        console.log(this.Column[i])
+/*       if (th[i].getAttribute(names.attribute)) {
           var attr = th[i].getAttribute(names.attribute)
           if (attr[0] === '@') {
             attr = /^(@[^ ]+) (.*)/.exec(attr)
@@ -1433,7 +1643,8 @@
           }
         } else {
           this.Column[i] = {attr: th[i].innerText, subquery: null, vars: [], type: 'text', sortName: sortName, classInfo: classInfo, alternative: null}
-        }
+        }*/
+        
         if (this.Column[i].type !== 'text' && !th[i].getAttribute(names.sortType)) {
           th[i].setAttribute(names.sortType, this.Column[i].type)
         }
@@ -1442,7 +1653,7 @@
         } else {
           this.Column[i].process = null
         }
-
+/*
         if (th[i].getAttribute(names.condition)) {
           attr = th[i].getAttribute(names.condition)
           attr = attr.split(' ', 3)
@@ -1487,7 +1698,7 @@
               this.Column[i].condition = cond
             }
           }
-        }
+        }*/
       }
     }
 
