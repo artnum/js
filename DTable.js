@@ -15,6 +15,7 @@
 
   global.Artnum.DTable = (function () {
     var CACHE = {}
+    var ROWS = {}
     var isHTMLElement = function (x) {
       return (typeof HTMLElement === 'object' ? x instanceof HTMLElement : x && typeof x === 'object' && x !== null && x.nodeType === Node.ELEMENT_NODE && typeof x.nodeName === 'string')
     }
@@ -1187,11 +1188,15 @@
           let row = []
           let dropRow = false
           for (let i = 0; i < this.Column.length; i++) {
+            let valueDescription = null
             let value = null
             let syntax = 'string'
             let entries = []
             for (let j = 0; j < this.Column[i].value.length; j++) {
-              syntax = this.Column[i].value[j].syntax
+              valueDescription = this.Column[i].value[j]
+              if (this.Column[i].value[j].syntax) {
+                syntax = this.Column[i].value[j].syntax
+              }
               switch (this.Column[i].value[j].type) {
                 case 'string':
                   value = this.Column[i].value[j].value
@@ -1216,10 +1221,21 @@
               this.dropRow(entry[this.EntryId])
               break
             }
+            let sortValue = null
+            if (this.Column[i].process) {
+              [value, sortValue] = await this.Column[i].process(value, entry)
+              if (sortValue === null) {
+                sortValue = value
+              }
+            } else {
+              sortValue = value
+            }
             row.push({
               value: value,
-              sortValue: value,
+              valueDescription: valueDescription,
+              sortValue: sortValue,
               type: syntax,
+              entries: entries,
               sortName: this.Column[i].sortName,
               classInfo: this.Column[i].classInfo
             })
@@ -1229,99 +1245,6 @@
         }
         this.refreshSort()
       }
-/*          
-          continue
-          
-          console.log(entry)
-          
-          ;(new Promise(async function (resolve, reject) {
-            var row = []
-
-
-            for (var i = 0; i < this.Column.length; i++) {
-              var value = null
-              if (this.Column[i].condition) {
-                var condition = this.Column[i].condition
-                if (condition.values[0] && condition.values[1]) {
-                  var val = [null, null]
-                  for (var x = 0; x < condition.values.length; x++) {
-                    var tmp = condition.values[x]
-                    if (tmp.subquery) {
-                      val[x] = await getSub(tmp.subquery, tmp.vars, entry, this.checkURL.bind(this))
-                    } else if (tmp.vars) {
-                      val[x] = [getVar(entry, tmp.vars[0])]
-                    } else if (tmp.value) {
-                      val[x] = [tmp.value]
-                    }
-                  }
-
-                  if (val[0] && val[1] && val[0].length > 0 && val[1].length > 0) {
-                    var res = false
-                    for (var v1 = val[0].pop(); v1; v1 = val[0].pop()) {
-                      for (var v2 = val[1].pop(); v2; v2 = val[1].pop()) {
-                        switch (condition.operation) {
-                          case 'lte': res = v2 <= v1; break
-                          case 'gte': res = v2 >= v1; break
-                          case 'ne': res = v2 !== v1; break
-                          case 'eq': res = v2 === v1; break
-                          case 'lt': res = v2 < v1; break
-                          case 'gt': res = v2 > v1; break
-                        }
-                        if (!res) {
-                          reject({id: entry[this.EntryId]})
-                          return
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-
-
-            for (i = 0; i < this.Column.length; i++) {
-              let type = this.Column[i].type
-              let alt = false
-              if (this.Column[i].subquery !== null) {
-                value = await getSub2(this.Column[i].subquery, this.Column[i].attr, this.Column[i].vars, entry, this.checkURL.bind(this))
-                if (value === null && this.Column[i].alternative) {
-                  alt = true
-                  type = 'text'
-                  if (this.Column[i].alternative === '%%') {
-                    value = walkValueTree(entry, this.Column[i].vars[0].substring(1))
-                  } else {
-                    value = walkValueTree(entry, this.Column[i].alternative)
-                  }
-                }
-              } else {
-                value = walkValueTree(entry, this.Column[i].attr)
-              }
-
-              if (!alt && this.Column[i].type.substr(0, 1) === "'") {
-                type = 'text'
-                value = this.Column[i].type.replace('%%', value)
-                value = value.replace("'", '')
-              }
-
-              let sortValue = null
-              if (this.Column[i].process) {
-                [value, sortValue] = await this.Column[i].process(value, entry)
-              }
-
-              row.push({value: value, sortValue: sortValue, type: type, sortName: this.Column[i].sortName, classInfo: this.Column[i].classInfo})
-            }
-            if (entry[this.EntryId]) {
-              resolve({id: entry[this.EntryId], content: row})
-            }
-          }.bind(this)).then(function (result) {
-            this.row(result)
-          }.bind(this), function (rejected) {
-            this.dropRow(rejected.id)
-          }.bind(this)))
-        }
-
-        this.refreshSort()
-      }*/
     }
 
     DTable.prototype.query = function (offset = 0, max = null) {
@@ -1407,17 +1330,51 @@
       }
     }
 
+    var ETarget = new EventTarget()
+    DTable.prototype.addEventListener = function (e, f, o = false) {
+      ETarget.addEventListener(e, f, o)
+    }
+
+    DTable.prototype.doEventClick = function (event) {
+      let target = event.target
+      let parent = target
+      while (parent && parent.nodeName !== 'TR') { parent = parent.parentNode }
+      let id = parent.getAttribute(names.id)
+      if (!id) { return }
+      if (!ROWS[id]) { return }
+      let col = ROWS[id].content[target.dataset.colId]
+      if (!col) { return }
+      let attr = col.valueDescription
+      while (attr) {
+        if (attr.type && attr.type === 'attr') { attr = attr.value; break }
+        attr = attr.value
+      }
+      ETarget.dispatchEvent(new CustomEvent(event.type, {detail: {
+        name: target.dataset.name ? target.dataset.name : '',
+        attribute: attr,
+        value: col.value,
+        entries: col.entries
+      }}))
+    }
+
     DTable.prototype.row = function (row) {
       var tr = document.createElement('TR')
+      ROWS[row.id] = row
       tr.setAttribute(names.id, row.id)
       for (var i = 0; i < row.content.length; i++) {
         var td = document.createElement('TD')
         td.setAttribute('data-sort-name', row.content[i].sortName)
+        td.dataset.colId = i
         td.classList.add(row.content[i].type)
         if (row.content[i].classInfo !== '') {
-          row.content[i].classInfo.split(' ').forEach(function (c) {
+          row.content[i].classInfo.split(' ').forEach((c) => {
             if (c !== '') {
               td.classList.add(c)
+            }
+            switch (c) {
+              case 'clickable':
+                td.addEventListener('click', this.doEventClick.bind(this))
+                break
             }
           })
         }
