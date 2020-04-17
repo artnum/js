@@ -1110,26 +1110,34 @@
 
     DTable.prototype.subQuery = function (subquery, entries) {
       return new Promise(async function (resolve, reject) {
+        let firstSubVar = null
         let url = null
         let value = subquery.value
+        let outValue = null
         while (value && value.type === 'query') {
-          await this.subQuery(subquery.value, entries)
+          outValue = await this.subQuery(subquery.value, entries)
           value = value.value
         }
-
         if (subquery.vars) {
           for (let k in subquery.vars) {
             let subvar = null
             let i = 0
             while (subvar === null && i < entries.length) {
-
               subvar = walkValueTree(entries[i++], subquery.vars[k])
+              if (subvar && !firstSubVar) { firstSubVar = subvar }
             }
-            if (subvar === null) { resolve(null); return }
+            if (subvar === null) {
+              if (firstSubVar) {
+                resolve(firstSubVar)
+              } else {
+                retolve(outValue)
+              }
+              return
+            }
             url = subquery.url.replace(k, subvar)
           }
         }
-
+        if (firstSubVar !== null) { outValue = firstSubVar }
         if (this.URLPrefix) {
           url = this.URLPrefix + url
         }
@@ -1140,7 +1148,8 @@
           } else {
             fetch(url).then((response) => {
               if (!response.ok) {
-                resolve(null)
+                CACHE[url] = outValue
+                resolve(firstSubVar)
                 return
               }
               response.json().then((results) => {
@@ -1153,29 +1162,34 @@
 
         p.then((results) => {
           if (!results) { resolve(null); return }
-          if (results.length > 0) {
-            let entry = Array.isArray(results.data) ? results.data[0] : results.data
-            entries.push(entry)
-            if (value === null) { resolve(null); return }
-            if (value.type === 'attr') {
-              let retVal = null
-              for (let i = entries.length - 1; i >= 0; i--) {
-                retVal = walkValueTree(entries[i], value.value)
-                if (retVal !== null) { break }
-              }
-              if (subquery.condition) {
-                if (!checkCondition(retVal, subquery)) {
-                  resolve(null)
-                } else {
-                  resolve(retVal)
-                }
+          /* we don't have an object we know, so let it pop back up,
+             allows to have strings that still display in the end
+           */
+          if (!results.length) { resolve(results); return }
+          if (results.length <= 0) { resolve(null); return }
+
+          let entry = Array.isArray(results.data) ? results.data[0] : results.data
+          entries.push(entry)
+          if (value === null) { resolve(null); return }
+          if (value.type !== 'attr') {
+            resolve(null)
+          } else {
+            let retVal = null
+            for (let i = entries.length - 1; i >= 0; i--) {
+              retVal = walkValueTree(entries[i], value.value)
+              if (retVal !== null) { break }
+            }
+            if (retVal === null) { retVal = outValue }
+            if (subquery.condition) {
+              if (!checkCondition(retVal, subquery)) {
+                resolve(null)
               } else {
                 resolve(retVal)
               }
-              return
+            } else {
+              resolve(retVal)
             }
           }
-          resolve(null)
         })
       }.bind(this))
     }
@@ -1223,7 +1237,7 @@
             }
             let sortValue = null
             if (this.Column[i].process) {
-              [value, sortValue] = await this.Column[i].process(value, entry)
+              [value, sortValue] = await this.Column[i].process(value, entries)
               if (sortValue === null) {
                 sortValue = value
               }
