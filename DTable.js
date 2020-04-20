@@ -1205,7 +1205,7 @@
             let valueDescription = null
             let value = null
             let syntax = 'string'
-            let entries = []
+            let entries = [entry]
             for (let j = 0; j < this.Column[i].value.length; j++) {
               valueDescription = this.Column[i].value[j]
               if (this.Column[i].value[j].syntax) {
