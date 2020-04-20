@@ -1130,7 +1130,7 @@
               if (firstSubVar) {
                 resolve(firstSubVar)
               } else {
-                retolve(outValue)
+                resolve(outValue)
               }
               return
             }
