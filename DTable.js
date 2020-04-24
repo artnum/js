@@ -1048,11 +1048,13 @@
       switch (syntax) {
         case 'bool':
         case 'boolean':
+          if (!v1) { v1 = false; break }
           if (v1.toLowerCase() === 'true' || parseInt(v1)) {
             v1 = true
           } else {
             v1 = false
           }
+          if (!v2) { v2 = false; break }
           if (v2.toLowerCase() === 'true' || parseInt(v2)) {
             v2 = true
           } else {
