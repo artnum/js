@@ -1217,6 +1217,7 @@
         })
 
         p.then((results) => {
+          let type = 'attr'
           if (!results) { resolve(null); return }
           /* we don't have an object we know, so let it pop back up,
              allows to have strings that still display in the end
@@ -1235,15 +1236,18 @@
               retVal = walkValueTree(entries[i], value.value)
               if (retVal !== null) { break }
             }
-            if (retVal === null) { retVal = outValue }
+            if (retVal === null) { 
+              retVal = outValue 
+              type = 'intermediate'
+            }
             if (subquery.condition) {
               if (!checkCondition(retVal, subquery)) {
                 resolve(null)
               } else {
-                resolve(retVal)
+                resolve([retVal, type])
               }
             } else {
-              resolve(retVal)
+              resolve([retVal, type])
             }
           }
         })
@@ -1267,6 +1271,7 @@
               if (this.Column[i].value[j].syntax) {
                 syntax = this.Column[i].value[j].syntax
               }
+              let type = this.Column[i].value[j].type
               switch (this.Column[i].value[j].type) {
                 case 'string':
                   value = this.Column[i].value[j].value
@@ -1277,6 +1282,10 @@
                 case 'query':
                   entries.push(entry)
                   value = await this.subQuery(this.Column[i].value[j], entries)
+                  if (value) { 
+                    type = value[1]
+                    value = value[0]
+                  }
                   break
               }
 
@@ -1285,7 +1294,7 @@
                 if (dropRow) { break }
               }
               /* first non-null value do the trick */
-              if (value !== null) { break }
+              if (value !== null && type === 'attr') { break }
             }
             if (dropRow) {
               this.dropRow(entry[this.EntryId])
