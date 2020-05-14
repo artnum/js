@@ -1535,13 +1535,13 @@
       return null
     }
 
-    var parseSubQuery = function (subquery) {
+    var parseSubQuery = function (subquery, syntax = 'string') {
       let subs = /^(?:@([^ ]+))\s(.*)/.exec(subquery)
       if (!subs) { return null }
       let attr = {
         type: 'query',
         url: subs[1],
-        value: parseAttribute(subs[2]),
+        value: parseAttribute(subs[2], syntax),
         vars: parseUrlVariable(subs[1])
       }
 
@@ -1606,6 +1606,15 @@
       let values = attr.split('|')
       for (let i = 0; i < values.length; i++) {
         let o = parseAttribute(values[i])
+
+        /* bubble up syntax of the attribute to get the right format */
+        let a = o
+        while (a && a.type !== 'attr') {
+          a = a.value
+        }
+        if (a) {
+          o.syntax = a.syntax
+        }
         if (o !== null) {
           attrValues.push(o)
         }
