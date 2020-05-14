@@ -85,23 +85,28 @@
       return v
     }
 
-    var nodeValue = function (node, what) {
-      if (!node) { return false }
-      node = toNode(node, what.name)
-      if (!node) { return false }
-      var value = node.getAttribute(names.sortValue) ? node.getAttribute(names.sortValue) : node.innerText
-      var txtVal = value
-      if (value === undefined) { return false }
-      var number = false
-      switch (what.type.toLowerCase()) {
+    var reOrderDate = function (strDate) {
+      const regexp = /([0-9]{1,2})\.([0-9]{1,2})\.([0-9]{2,4})/g
+      let m = regexp.exec(strDate)
+      if (!m) {
+        return strDate
+      } else {
+        if (m[3].length < 4) { m[3] = String(parseInt(m[3])+ 2000) }
+      }
+      return `${m[3]}/${m[2]}/${m[1]}`
+    }
+
+    var convertValue = function (value, type, transliterate = null) {
+      let number = false
+      switch (type) {
         case 'bool':
         case 'boolean':
           if (value.toLowerCase() === 'true') {
             value = true
-            txtVal = 'a'
+            txtVal = 'true'
           } else {
             value = false
-            txtVal = 'b'
+            txtVal = 'false'
           }
           break
         case 'number':
@@ -114,14 +119,19 @@
           value = parseFloat(value)
           number = true
           break
+        default:
         case 'string':
-          value = String(value).toLowerCase()
+          value = String(value).toLowerCase().trim()
+          if (transliterate) { value = transliterate(value)}
           break
         case 'date':
+          value = reOrderDate(value)
           value = dateValue(value, false)
+          number = true
           break
         case 'datetime':
           value = dateValue(value)
+          number = true
           break
         case 'time':
           value = timeValue(value)
@@ -129,20 +139,64 @@
           break
       }
 
-      return [value, number, txtVal]
+      return [value, number]
+    }
+
+    var nodeValue = function (node, what, transliterate = null) {
+      if (!node) { return false }
+      node = toNode(node, what.name)
+      if (!node) { return false }
+      var value = node.getAttribute(names.sortValue) ? node.getAttribute(names.sortValue) : node.innerText
+      var txtVal = value
+      if (value === undefined) { return false }
+      var number = false
+      return [...convertValue(value, what.type, transliterate), txtVal]
+    }
+    
+    var compareNumberNode = function (nodeVal, compareString, type) {
+      let trueValue = true
+      if (compareString[0] === '!') {
+        compareString = compareString.substring(1).trim()
+        trueValue = false
+      }
+      let v1 = nodeVal[0]
+      switch (compareString[0]) {
+        default:
+          let v2 = convertValue(compareString, type)[0]
+          if (v1 === v2) { return trueValue }
+          return !trueValue
+          break
+        case '>':
+          if (compareString[1] === '=') {
+            let v2 = convertValue(compareString.substring(2), type)[0]
+            if (v2 <= v1) { return trueValue}
+          } else {
+            let v2 = convertValue(compareString.substring(1), type)[0]
+            if (v2 < v1) { return trueValue}
+          }
+          return !trueValue
+        case '<':
+          if (compareString[1] === '=') {
+            let v2 = convertValue(compareString.substring(2), type)[0]
+            if (v2 >= v1) { return trueValue}
+          } else {
+            let v2 = convertValue(compareString.substring(1), type)[0]
+            if (v2 > v1) { return trueValue}
+          }
+          return !trueValue
+      } 
     }
 
     var almostHasValue = function (tr, value, what, translit = null) {
       if (!tr) { return false }
-      var node = toNode(tr, what.name)
-      if (!node) { return false }
-      var v1 = String(node.innerHTML).toLowerCase().trim()
-      var v2 = String(value).toLowerCase().trim()
-
-      if (translit) {
-        v1 = translit(v1)
-        v2 = translit(v2)
+      var nodeVal = nodeValue(tr, what, translit)
+      if (!nodeVal) { return false }
+      if (nodeVal[1]) {
+        return compareNumberNode(nodeVal, value, what.type)
       }
+
+      var v1 = String(nodeVal[0])
+      var v2 = String(convertValue(value, 'string', translit)[0])
 
       if (v2.length === 0) { return true }
 
