@@ -5,6 +5,7 @@ var Select = function (input, store, options = {allowFreeText: true, realSelect:
     throw new Error('Not an Input element')
   }
   input.classList.add('select')
+  let popper = null
   let originalValue = input.value
   let obj = new Proxy(this, {
     get: function (obj, prop) {
@@ -56,13 +57,34 @@ var Select = function (input, store, options = {allowFreeText: true, realSelect:
 
   var list = document.createElement('DIV')
   list.classList.add('dropdown')
-  var popper = null
+
+  /* taken from https://stackoverflow.com/posts/35173443/revisions */
+  var focusNextElement = function (current = null) {
+    if (!current) {
+      current = document.activeElement
+    }
+    //add all elements we want to include in our selection
+    let focussableElements = 'a:not([disabled]), button:not([disabled]), input[type=text]:not([disabled]), [tabindex]:not([disabled]):not([tabindex="-1"])';
+    if (document.activeElement && document.activeElement.form) {
+      let focussable = Array.prototype.filter.call(document.activeElement.form.querySelectorAll(focussableElements),
+        function (element) {
+          //check for visibility while always include the current activeElement 
+          return element.offsetWidth > 0 || element.offsetHeight > 0 || element === document.activeElement
+        });
+      let index = focussable.indexOf(current);
+      if (index > -1) {
+        let element = focussable[index + 1] || focussable[0]
+        element.focus()
+      }
+    }
+  }
 
   var select = (target, dontMessValue = false) => {
     if (!dontMessValue) {
       input.value = target.textContent
     }
     input.dataset.value = target.dataset.value
+    target.dataset.hover = '1'
     let ev = new Event('change')
     ev.value = input.dataset.value
     this.Events.dispatchEvent(ev)
@@ -88,7 +110,7 @@ var Select = function (input, store, options = {allowFreeText: true, realSelect:
           moveStep = Math.floor(list.getBoundingClientRect().height / list.firstElementChild.getBoundingClientRect().height)
         }
         wrapTarget = list.lastElementChild
-        /* Fall through */
+      /* Fall through */
       case 'ArrowDown':
         if (!wrapTarget) {
           wrapTarget = list.firstElementChild
@@ -155,9 +177,8 @@ var Select = function (input, store, options = {allowFreeText: true, realSelect:
   var degenerate = () => {
     if (popper) { popper.destroy(); popper = null }
     if (list.parentNode) {
-      list.parentNode.removeChild(list)
+      window.requestAnimationFrame(() => list.parentNode.removeChild(list))
     }
-    list.innerHTML = ''
   }
 
   var handleTab = (event) => {
@@ -166,10 +187,10 @@ var Select = function (input, store, options = {allowFreeText: true, realSelect:
         for (let n = list.firstElementChild; n; n = n.nextElementSibling) {
           if (n.dataset.hover === '1') {
             select(n)
-            degenerate()
-            return
+            break
           }
         }
+        degenerate()
         break
     }
   }
@@ -179,6 +200,7 @@ var Select = function (input, store, options = {allowFreeText: true, realSelect:
       input.setSelectionRange(0, input.value.length)
     }
     switch (event.key) {
+      case 'Tab': return
       case 'Enter':
         for (let n = list.firstElementChild; n; n = n.nextElementSibling) {
           if (n.dataset.hover === '1') {
@@ -188,6 +210,7 @@ var Select = function (input, store, options = {allowFreeText: true, realSelect:
             event.stopImmediatePropagation()
             select(n)
             degenerate()
+            focusNextElement(input)
           }
         }
         return
@@ -205,7 +228,9 @@ var Select = function (input, store, options = {allowFreeText: true, realSelect:
         return
       case 'Backspace':
       case 'Delete':
-        if (input.value.length === 0 && !options.realSelect) { return degenerate() }
+        if (input.value.length === 0 && !options.realSelect) { 
+          return degenerate() 
+        }
     }
     /* avoid generating another list over the old one, triggering a nasty visual bug when you select
      * an item the list disappear and nothing is selected
@@ -214,8 +239,8 @@ var Select = function (input, store, options = {allowFreeText: true, realSelect:
       window.requestAnimationFrame((event) => {
         if (!list.parentNode) {
           input.parentNode.insertBefore(list, input.nextSiblingElement)
-          popper = new Popper(input, list, {removeOnDestroy: true, positionFixed: true, placement: 'bottom-start'})
         }
+        popper = new Popper(input, list, { removeOnDestroy: true, positionFixed: true, placement: 'bottom-start' })
       })
     }
 
@@ -224,6 +249,9 @@ var Select = function (input, store, options = {allowFreeText: true, realSelect:
       if (data.length < 1) {
         degenerate()
       } else {
+        window.requestAnimationFrame(() => {
+          list.innerHTML = ''
+        })
         data.forEach((entry) => {
           let s = document.createElement('DIV')
           s.dataset.value = entry.value
@@ -236,11 +264,15 @@ var Select = function (input, store, options = {allowFreeText: true, realSelect:
             }
             event.target.dataset.hover = '1'
           })
-          s.addEventListener('mousedown', (event) => { select(event.target); degenerate() })
+          s.addEventListener('mousedown', (event) => {
+            event.preventDefault()
+            select(event.target)
+            degenerate()
+            focusNextElement(input)
+          })
           frag.appendChild(s)
         })
         window.requestAnimationFrame(() => {
-          list.innerHTML = ''
           list.appendChild(frag)
           if (!options.allowFreeText) {
             select(list.firstElementChild, true)
