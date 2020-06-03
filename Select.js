@@ -63,8 +63,13 @@ var Select = function (input, store, options = {allowFreeText: true, realSelect:
       input.value = target.textContent
     }
     input.dataset.value = target.dataset.value
+    let ev = new Event('change')
+    ev.value = input.dataset.value
+    this.Events.dispatchEvent(ev)
   }
 
+  this.Events = new EventTarget()
+  
   var move = (k) => {
     let current = null
     for (let i = list.firstElementChild; i; i = i.nextElementSibling) {
@@ -202,12 +207,17 @@ var Select = function (input, store, options = {allowFreeText: true, realSelect:
       case 'Delete':
         if (input.value.length === 0 && !options.realSelect) { return degenerate() }
     }
-    window.requestAnimationFrame((event) => {
-      if (!list.parentNode) {
-        input.parentNode.insertBefore(list, input.nextSiblingElement)
-        popper = new Popper(input, list, {removeOnDestroy: true, positionFixed: true, placement: 'bottom-start'})
-      }
-    })
+    /* avoid generating another list over the old one, triggering a nasty visual bug when you select
+     * an item the list disappear and nothing is selected
+     */
+    if (!popper) {
+      window.requestAnimationFrame((event) => {
+        if (!list.parentNode) {
+          input.parentNode.insertBefore(list, input.nextSiblingElement)
+          popper = new Popper(input, list, {removeOnDestroy: true, positionFixed: true, placement: 'bottom-start'})
+        }
+      })
+    }
 
     store.query(input.value).then((data) => {
       let frag = document.createDocumentFragment()
@@ -257,4 +267,8 @@ var Select = function (input, store, options = {allowFreeText: true, realSelect:
 
   obj.value = originalValue
   return obj
+}
+
+Select.prototype.addEventListener = function (type, callback, options = {}) {
+  this.Events.addEventListener(type, callback, options)
 }
