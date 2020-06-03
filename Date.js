@@ -53,6 +53,14 @@ Date.prototype.fullDate = function () {
   return d + '.' + m + '.' + y
 }
 
+Date.prototype.dateStamp = function () {
+  let d = this.getDate()
+  let m = this.getMonth() + 1
+  let y = this.getFullYear()
+
+  return `${y}-${m < 10 ? '0' + m : m }-${d < 10 ? '0' + d : d}`
+}
+
 Date.prototype.shortHour = function () {
   var h = this.getHours()
   var m = this.getMinutes()
