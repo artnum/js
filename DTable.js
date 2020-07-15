@@ -1352,7 +1352,7 @@
               type: syntax,
               entries: entries,
               sortName: this.Column[i].sortName,
-              classInfo: `${this.Column[i].classInfo}${subclass === null ? '' : subclass}`
+              classInfo: `${this.Column[i].classInfo}${subclass === null ? '' : ' ' + subclass}`
             })
           }
           if (dropRow) { continue }
