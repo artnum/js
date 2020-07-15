@@ -69,6 +69,119 @@ Date.prototype.shortHour = function () {
   return h + ':' + m
 }
 
+/* italian, french, german, english month name for parsing */
+Date.EUMonths = {
+  'gennaio': 1,
+  'janvier': 1,
+  'january': 1,
+  'januar': 1,
+  'febbraio': 2,
+  'fevrier': 2,
+  'février': 2,
+  'february': 2,
+  'feburar': 2,
+  'marzo': 3,
+  'mars': 3,
+  'march': 3,
+  'marz': 3,
+  'märz': 3,
+  'aprile': 4,
+  'avril': 4,
+  'april': 4,
+  'maggio': 5,
+  'mai': 5,
+  'may': 5,
+  'guigno': 6,
+  'juin': 6,
+  'june': 6,
+  'juni': 6,
+  'luglio': 7,
+  'juillet': 7,
+  'july': 7,
+  'juli': 7,
+  'agosto': 8,
+  'aout': 8,
+  'août': 8,
+  'august': 8,
+  'settembre': 9,
+  'septembre': 9,
+  'september': 9,
+  'ottobre': 10,
+  'octobre': 10,
+  'october': 10,
+  'oktober': 10,
+  'novembre': 11,
+  'november': 11,
+  'dicembre': 12,
+  'decembre': 12,
+  'décembre': 12,
+  'dezember': 12,
+  'december': 12
+}
+
+Date.EUParse = function (txt, origin = null) {
+  const durationReg = /^\s*([0-9]+)\s*(ja|j|s|m|a|d|y|w|g|t)?\s*$/gi
+  const dateReg = /^\s*([0-9]+)\s*[\.\/\-]?\s*([0-9]+|[a-zäéû]+)\s*[\.\/\-]?\s*([0-9]+)?\s*$/gi
+  let duration = durationReg.exec(txt)
+  let date = dateReg.exec(txt)
+  if (date !== null && duration === null) {
+      if (date) {
+          let d = parseInt(date[1])
+          let m = parseInt(date[2])
+          if (isNaN(m)) {
+              date[2] = date[2].toLocaleLowerCase()
+              if (Date.EUMonths[date[2]] !== undefined) {
+                  m = Date.EUMonths[date[2]]
+              } else {
+                  for(let month in Date.EUMonths) {
+                      if (month.indexOf(date[2]) === 0) {
+                          m = Date.EUMonths[month]
+                          break
+                      }
+                  }
+              }
+          }
+          let y = (new Date()).getFullYear()
+          if (date[3] !== undefined) {
+              y = parseInt(date[3])
+              if (date[3].length < 4) {
+                  y += 2000
+              }
+          }
+          return new Date(y, m - 1, d)
+      }
+  } else if (duration !== null) {
+      if (!origin) {
+          origin = new Date()
+      }
+      if (duration[2] === undefined) {
+          duration[2] = 'j'
+      }
+      switch (duration[2].toLowerCase()) {
+          // Jour or Day
+          case 'j':
+          case 'd':
+          case 't':
+          case 'g':
+              return new Date(origin.getFullYear(), origin.getMonth(), origin.getDate() + parseInt(duration[1]))
+          // Semaine or Week
+          case 's':
+          case 'w':
+              return new Date(origin.getFullYear(), origin.getMonth(), origin.getDate() + (parseInt(duration[1]) * 7))
+          // Mois or Month
+          case 'm':
+              return new Date(origin.getFullYear(), origin.getMonth() + parseInt(duration[1]), origin.getDate())
+          // An or Year
+          case 'a':
+          case 'y':
+          case 'ja':
+              return new Date(origin.getFullYear() + parseInt(duration[1]), origin.getMonth(), origin.getDate())
+      }
+  } else {
+    return new Date(undefined)
+  }
+}
+
 /* DateRange object has a begining and an end */
 var DateRange = function (begin, end) {
   if (begin instanceof Date) {
