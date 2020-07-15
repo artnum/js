@@ -738,10 +738,10 @@
         }
       }
       if (name) {
-        row.setAttribute(names.filteredOut, name)
+        window.requestAnimationFrame(() => row.setAttribute(names.filteredOut, name))
       } else {
         if (name === null) {
-          row.removeAttribute(names.filteredOut)
+          window.requestAnimationFrame(() => row.removeAttribute(names.filteredOut))
         }
       }
     }
