@@ -42,7 +42,8 @@
       filteredOut: 'data-filtered-out',
       classInfo: 'data-class',
       sortIgnore: 'data-sort-ignore',
-      trIsHeader: 'data-header'
+      trIsHeader: 'data-header',
+      filterValue: 'data-filter-value'
     }
 
     var dateValue = function (date, time = true) {
@@ -125,8 +126,13 @@
           if (transliterate) { value = transliterate(value)}
           break
         case 'date':
-          value = reOrderDate(value)
-          value = dateValue(value, false)
+          let r = reOrderDate(value)
+          r = dateValue(r, false)
+          if (isNaN(value.getTime())) {
+            value = dateValue(value, false)
+          } else {
+            value = r
+          }
           number = true
           break
         case 'datetime':
@@ -142,11 +148,16 @@
       return [value, number]
     }
 
-    var nodeValue = function (node, what, transliterate = null) {
+    var nodeValue = function (node, what, transliterate = null, filter = false) {
       if (!node) { return false }
       node = toNode(node, what.name)
       if (!node) { return false }
-      var value = node.getAttribute(names.sortValue) ? node.getAttribute(names.sortValue) : node.innerText
+      let value
+      if (filter) {
+        value = node.getAttribute(names.filterValue) ? node.getAttribute(names.filterValue) : node.innerText
+      } else {
+        value = node.getAttribute(names.sortValue) ? node.getAttribute(names.sortValue) : node.innerText
+      }
       var txtVal = value
       if (value === undefined) { return false }
       var number = false
@@ -189,7 +200,7 @@
 
     var almostHasValue = function (tr, value, what, translit = null) {
       if (!tr) { return false }
-      var nodeVal = nodeValue(tr, what, translit)
+      var nodeVal = nodeValue(tr, what, translit, true)
       if (!nodeVal) { return false }
       if (nodeVal[1]) {
         return compareNumberNode(nodeVal, value, what.type)
@@ -1261,7 +1272,10 @@
           this.isNewer(entry)
           let row = []
           let dropRow = false
+          let substitution = null
+
           for (let i = 0; i < this.Column.length; i++) {
+            substitution = null
             let valueDescription = null
             let value = null
             let syntax = 'string'
@@ -1272,6 +1286,10 @@
                 syntax = this.Column[i].value[j].syntax
               }
               let type = this.Column[i].value[j].type
+              if (this.Column[i].value[j].substitution !== undefined &&
+                this.Column[i].value[j].substitution !== null) {
+                substitution = this.Column[i].value[j].substitution
+              }
               switch (this.Column[i].value[j].type) {
                 case 'string':
                   value = this.Column[i].value[j].value
@@ -1309,6 +1327,13 @@
             } else {
               sortValue = value
             }
+
+            if (substitution !== null) {
+              if (substitution[value] !== undefined) {
+                value = substitution[value]
+              }
+            }
+
             row.push({
               value: value,
               valueDescription: valueDescription,
@@ -1382,7 +1407,12 @@
           return String(value)
         case 'date':
           try {
-            return (new Date(value)).fullDate()
+            let date = new Date(value)
+            if (date.fullDate === undefined) {
+              return date.toLocaleDateString()
+            } else {
+              return date.fullDate()
+            }
           } catch (e) {
             console.log(value, type, e)
             return 'Invalid date'
@@ -1563,12 +1593,33 @@
       return str[1] ? str[1] : str[2]
     }
 
+    var parseSubstitution = function (substitution) {
+      const rsub = /([^=]+)=([^,]+),?/gm;
+      let matches
+      let subs = {}
+      while ((matches = rsub.exec(substitution)) !== null) {
+        if (matches.index === rsub.lastIndex) {
+          rsub.lastIndex++
+        }
+
+        subs[matches[1]] = matches[2]
+      }
+      return subs
+    }
+
     var parseAttr = function (attribute) {
-      let attr = attribute.split(':')
+      let substitution = /^([^\~]*)(?:\~(.*))?/.exec(attribute)
+      let attr = substitution[1].split(':')
+
+      let subs = null
+      if (substitution[2] !== undefined) {
+        subs = parseSubstitution(substitution[2])
+      }
+
       if (attr.length >= 2) {
-        return {type: 'attr', syntax: attr[1], value: attr[0]}
+        return {type: 'attr', syntax: attr[1], value: attr[0], substitution: subs}
       } else {
-        return {type: 'attr', syntax: 'string', value: attr[0]}
+        return {type: 'attr', syntax: 'string', value: attr[0], substitution: subs}
       }
     }
 
