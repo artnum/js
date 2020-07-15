@@ -1233,7 +1233,7 @@
           /* we don't have an object we know, so let it pop back up,
              allows to have strings that still display in the end
            */
-          if (!results.length) { resolve(results); return }
+          if (!results.length) { resolve(null); return }
           if (results.length <= 0) { resolve(null); return }
 
           let entry = Array.isArray(results.data) ? results.data[0] : results.data
@@ -1273,9 +1273,11 @@
           let row = []
           let dropRow = false
           let substitution = null
+          let subclass = null
 
           for (let i = 0; i < this.Column.length; i++) {
             substitution = null
+            subclass = null
             let valueDescription = null
             let value = null
             let syntax = 'string'
@@ -1293,9 +1295,15 @@
               switch (this.Column[i].value[j].type) {
                 case 'string':
                   value = this.Column[i].value[j].value
+                  if (this.Column[i].value[j].subclass !== undefined) {
+                    subclass = this.Column[i].value[j].subclass
+                  }
                   break
                 case 'attr':
                   value = walkValueTree(entry, this.Column[i].value[j].value)
+                  if (this.Column[i].value[j].subclass !== undefined) {
+                    subclass = this.Column[i].value[j].subclass
+                  }
                   break
                 case 'query':
                   entries.push(entry)
@@ -1303,6 +1311,9 @@
                   if (value) { 
                     type = value[1]
                     value = value[0]
+                    if (this.Column[i].value[j].subclass !== undefined) {
+                      subclass = this.Column[i].value[j].subclass
+                    }
                   }
                   break
               }
@@ -1341,7 +1352,7 @@
               type: syntax,
               entries: entries,
               sortName: this.Column[i].sortName,
-              classInfo: this.Column[i].classInfo
+              classInfo: `${this.Column[i].classInfo}${subclass === null ? '' : subclass}`
             })
           }
           if (dropRow) { continue }
@@ -1666,6 +1677,7 @@
       let values = attr.split('|')
       for (let i = 0; i < values.length; i++) {
         let o = parseAttribute(values[i])
+        o.subclass = `alt_${i}`
 
         /* bubble up syntax of the attribute to get the right format */
         let a = o
