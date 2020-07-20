@@ -1356,10 +1356,46 @@
             })
           }
           if (dropRow) { continue }
-          this.row({id: entry[this.EntryId], content: row})
+          this.row({id: entry[this.EntryId], content: row}).then(() => {
+            this.refreshSort()
+            this.refreshFilter()
+          })
         }
-        this.refreshSort()
       }
+    }
+
+    DTable.prototype.getQueryOpts = function () {
+      let opts = {params: {}}
+      if (this.Table.getAttribute(names.options)) {
+        let _opts = toJSON(this.Table.getAttribute(names.options))
+        for (let k in _opts) {
+          switch (k) {
+            default:
+              opts[k] = _opts[k]
+              break
+            case 'parameters':
+              opts.params = _opts[k]
+              this.searchParams = _opts[k]
+          }
+        }
+      }
+      return opts
+    }
+
+    /* to use when app post data and want to load that value in table */
+    DTable.prototype.queryOne = function (id) {
+      let opts = this.getQueryOpts()
+      if (opts.parameters) {
+        delete opts.parameters // don't want we are not searching data 
+      }
+      Artnum.Query.exec(Artnum.Path.url(`${this.Table.getAttribute(names.source)}/${id}`, opts)).then(result => {
+        if (result.length > 0) {
+          if (!Array.isArray(result.data)) {
+            result.data = [ result.data ]
+          }
+          this.processResult(result)
+        }
+      })
     }
 
     DTable.prototype.query = function (offset = 0, max = null) {
@@ -1513,8 +1549,6 @@
         tr.appendChild(td)
       }
 
-      this.refreshFilter(tr)
-
       var current = this.Tbody.firstElementChild
       for (; current; current = current.nextElementSibling) {
         if (String(current.getAttribute(names.id)) === String(row.id)) {
@@ -1524,17 +1558,22 @@
       if (this.postprocess) {
         this.postprocess(tr)
       }
-      window.requestAnimationFrame(function () {
-        try {
-          if (current) {
-            this.Tbody.replaceChild(tr, current)
-          } else {
-            this.Tbody.appendChild(tr)
+      let p = new Promise((resolve, reject) => {
+        window.requestAnimationFrame(() => {
+          try {
+            if (current) {
+              this.Tbody.replaceChild(tr, current)
+            } else {
+              this.Tbody.appendChild(tr)
+            }
+            resolve()
+          } catch (e) {
+            reject(e)
+            // node is not there anymore
           }
-        } catch (e) {
-          // node is not there anymore
-        }
-      }.bind(this))
+        })
+      })
+      return p
     }
 
     var parseCondition = function (any) {
