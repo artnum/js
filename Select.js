@@ -5,6 +5,7 @@ var Select = function (input, store, options = {allowFreeText: true, realSelect:
     throw new Error('Not an Input element')
   }
   input.classList.add('select')
+  input.setAttribute('autocomplete', 'off')
   let popper = null
   let originalValue = input.value
   let obj = new Proxy(this, {
