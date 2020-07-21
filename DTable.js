@@ -1426,9 +1426,7 @@
             Artnum.Query.exec(Artnum.Path.url(this.Table.getAttribute(names.source), opts)).then(function (result) {
               this.processResult(result)
               if (parseInt(result.length) + offset < parseInt(max.length)) {
-                this.query(offset + parseInt(result.length), max).then(() => {
-                  this.refresh()
-                })
+                setTimeout(() => { this.query(offset + parseInt(result.length), max) }, 50)
               } else {
                 this.refresh()
               }
