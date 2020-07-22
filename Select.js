@@ -186,6 +186,7 @@ var Select = function (input, store, options = {allowFreeText: true, realSelect:
     switch (event.key) {
       case 'Enter':
         event.stopPropagation()
+        event.preventDefault()
         return
       case 'Tab':
         for (let n = list.firstElementChild; n; n = n.nextElementSibling) {
