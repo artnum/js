@@ -175,7 +175,7 @@ var Select = function (input, store, options = {allowFreeText: true, realSelect:
     }
   }
 
-  var degenerate = () => {
+  var degenerate = (event) => {
     if (popper) { popper.destroy(); popper = null }
     if (list.parentNode) {
       window.requestAnimationFrame(() => list.parentNode.removeChild(list))
@@ -283,7 +283,12 @@ var Select = function (input, store, options = {allowFreeText: true, realSelect:
     })
   }
 
+  /* must catch onchange and redispatch a new onchange for form listening on that
+   * event. Not doing so lead, in some cases, to strange behavior
+   */
   input.addEventListener('change', (event) => {
+    if (event.detail && event.detail.resent) { return }
+    event.stopPropagation()
     if (input.dataset.value) {
       store.get(input.dataset.value).then((entry) => {
         if (entry) {
@@ -291,7 +296,8 @@ var Select = function (input, store, options = {allowFreeText: true, realSelect:
         }
       })
     }
-  })
+    input.dispatchEvent(new CustomEvent('change', {detail: {resent: true}}))
+  }, {capture: true})
 
   input.addEventListener('blur', degenerate)
   input.addEventListener('keyup', generate)
