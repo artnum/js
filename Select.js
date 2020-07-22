@@ -184,6 +184,9 @@ var Select = function (input, store, options = {allowFreeText: true, realSelect:
 
   var handleTab = (event) => {
     switch (event.key) {
+      case 'Enter':
+        event.stopPropagation()
+        return
       case 'Tab':
         for (let n = list.firstElementChild; n; n = n.nextElementSibling) {
           if (n.dataset.hover === '1') {
@@ -208,7 +211,7 @@ var Select = function (input, store, options = {allowFreeText: true, realSelect:
             /* select item in the list and block some on keyup enter that send form if 
              * listener setup as so (if setup before this one it has no effet)
              */
-            event.stopImmediatePropagation()
+            event.stopPropagation()
             select(n)
             degenerate()
             focusNextElement(input)
@@ -300,8 +303,8 @@ var Select = function (input, store, options = {allowFreeText: true, realSelect:
   }, {capture: true})
 
   input.addEventListener('blur', degenerate)
-  input.addEventListener('keyup', generate)
-  input.addEventListener('keydown', handleTab)
+  input.addEventListener('keyup', generate, {capture: true})
+  input.addEventListener('keydown', handleTab, {capture: true})
   input.addEventListener('focus', generate)
 
   obj.value = originalValue
