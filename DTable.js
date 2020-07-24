@@ -104,10 +104,8 @@
         case 'boolean':
           if (value.toLowerCase() === 'true') {
             value = true
-            txtVal = 'true'
           } else {
             value = false
-            txtVal = 'false'
           }
           break
         case 'number':
