@@ -443,6 +443,7 @@
       this.searchParams = {}
       this.refreshParams = {}
       this.Plist = []
+      this.Actions = []
 
       if (arguments[0]) {
         if (arguments[0].prefix) {
@@ -466,6 +467,10 @@
 
       if (arguments[0].search) {
         this.search = arguments[0].search
+      }
+      
+      if (arguments[0].actions && Array.isArray(arguments[0].actions)) {
+        this.Actions = arguments[0].actions
       }
 
       if (!this.Table) {
@@ -1392,6 +1397,10 @@
             result.data = [ result.data ]
           }
           this.processResult(result)
+        } else {
+          if (result.data === null) {
+            this.dropRow(id)
+          }
         }
       })
     }
@@ -1545,6 +1554,30 @@
         tr.appendChild(td)
       }
 
+      if (this.Actions.length > 0) {
+        let actionTd = document.createElement('TD')
+        this.Actions.forEach(action => {
+          let d = document.createElement('DIV')
+          d.innerHTML = action.html
+          let node
+          if (d.children.length === 1) {
+            node = d.firstElementChild
+          } else {
+            node = d
+          }
+
+          node.dataset.id = row.id
+          action.events.forEach(event => {
+            if (event.name && event.callback) {
+              node.addEventListener(event.name, function (event) {
+                this.callback(event, this.dtable)
+              }.bind({callback: event.callback, dtable: this}), event.options ? event.options : {})
+            }
+          })
+          actionTd.appendChild(node)
+        })
+        tr.appendChild(actionTd)
+      }
       var current = this.Tbody.firstElementChild
       for (; current; current = current.nextElementSibling) {
         if (String(current.getAttribute(names.id)) === String(row.id)) {
@@ -1773,6 +1806,15 @@
           this.Column[i].process = this.Plist[th[i].getAttribute(names.process)]
         } else {
           this.Column[i].process = null
+        }
+      }
+
+      if (this.Actions.length > 0) {
+        let actionHead = document.createElement('TH')
+        actionHead.setAttribute(names.sortType, 'no')
+        let tr = this.Thead.getElementsByTagName('TR')[0]
+        if (tr) {
+          window.requestAnimationFrame(() => tr.appendChild(actionHead))
         }
       }
     }
