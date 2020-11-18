@@ -21,7 +21,7 @@
     }
     /* parse json stored into attribute. Format is more like {key: 'value'}, so JSON.parse doesn't work */
     var toJSON = function (str) {
-      str = str.replace(/'/g, '"').replace(/(['"])?([a-zA-Z0-9_.]+)(['"])?:/g, '"$2": ')
+      str = str.replace(/'/g, '"').replace(/(['"])?([@a-zA-Z0-9_.]+)(['"])?:/g, '"$2": ')
       return JSON.parse(str)
     }
 
@@ -1406,6 +1406,7 @@
     }
 
     DTable.prototype.query = function (offset = 0, max = null) {
+      const queryChunk = 1000
       return new Promise((resolve, reject) => {
         var opts = {params: {}}
         if (this.Table.getAttribute(names.options)) {
@@ -1420,26 +1421,16 @@
                 this.searchParams = _opts[k]
             }
           }
-          new Promise((resolve, reject) => {
-            if (!max) {
-              Artnum.Query.exec(Artnum.Path.url(this.Table.getAttribute(names.source) + '/.count', opts)).then((result) => {
-                resolve(result)
-              })
+          opts.params.limit = `${offset},${queryChunk}`
+          Artnum.Query.exec(Artnum.Path.url(this.Table.getAttribute(names.source), opts)).then(function (result) {
+            this.processResult(result)
+            if (parseInt(result.length) > 0 && parseInt(result.length) === queryChunk) {
+              setTimeout(() => { this.query(offset + parseInt(result.length)) }, 50)
             } else {
-              resolve(max)
+              this.refresh()
             }
-          }).then((max) => {
-            opts.params.limit = `${offset},250`
-            Artnum.Query.exec(Artnum.Path.url(this.Table.getAttribute(names.source), opts)).then(function (result) {
-              this.processResult(result)
-              if (parseInt(result.length) + offset < parseInt(max.length)) {
-                setTimeout(() => { this.query(offset + parseInt(result.length), max) }, 50)
-              } else {
-                this.refresh()
-              }
-              resolve()
-            }.bind(this))
-          })
+            resolve()
+          }.bind(this))
         }
       })
     }
