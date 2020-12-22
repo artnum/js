@@ -86,6 +86,11 @@ var Select = function (input, store, options = {allowFreeText: true, realSelect:
     }
     input.dataset.value = target.dataset.value
     target.dataset.hover = '1'
+    window.requestAnimationFrame(() => {
+      if (target.parentNode) {
+        target.parentNode.scrollTop = target.offsetTop - Math.floor(target.parentNode.clientHeight / 2)
+      }
+    })
     let ev = new Event('change')
     ev.value = input.dataset.value
     this.Events.dispatchEvent(ev)
@@ -201,8 +206,10 @@ var Select = function (input, store, options = {allowFreeText: true, realSelect:
   }
 
   var generate = (event) => {
+    let noValQuery = false
     if (event.type === 'focus') {
       input.setSelectionRange(0, input.value.length)
+      noValQuery = true
     }
     switch (event.key) {
       case 'Tab': return
@@ -250,8 +257,9 @@ var Select = function (input, store, options = {allowFreeText: true, realSelect:
     }
 
     let currentValue = input.value
+    if (noValQuery) { currentValue = '' }
     store.query(currentValue).then((data) => {
-      if (currentValue !== input.value) { return }
+      if (currentValue !== input.value && !noValQuery) { return }
       let frag = document.createDocumentFragment()
       if (data.length < 1) {
         degenerate()
@@ -259,10 +267,14 @@ var Select = function (input, store, options = {allowFreeText: true, realSelect:
         window.requestAnimationFrame(() => {
           list.innerHTML = ''
         })
+        let noValQuerySelectedElement = null
         data.forEach((entry) => {
           let s = document.createElement('DIV')
           s.dataset.value = entry.value
           s.innerHTML = entry.label
+          if (noValQuery && input.dataset.value === s.dataset.value) {
+            noValQuerySelectedElement = s
+          }
           s.addEventListener('mouseover', (event) => {
             for (let i = list.firstElementChild; i; i = i.nextElementSibling) {
               if (i !== event.target) {
@@ -281,7 +293,9 @@ var Select = function (input, store, options = {allowFreeText: true, realSelect:
         })
         window.requestAnimationFrame(() => {
           list.appendChild(frag)
-          if (!options.allowFreeText) {
+          if (noValQuerySelectedElement) {
+            select(noValQuerySelectedElement, true)
+          } else if (!options.allowFreeText) {
             select(list.firstElementChild, true)
           }
         })
