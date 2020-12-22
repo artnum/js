@@ -249,7 +249,9 @@ var Select = function (input, store, options = {allowFreeText: true, realSelect:
       })
     }
 
-    store.query(input.value).then((data) => {
+    let currentValue = input.value
+    store.query(currentValue).then((data) => {
+      if (currentValue !== input.value) { return }
       let frag = document.createDocumentFragment()
       if (data.length < 1) {
         degenerate()
