@@ -608,6 +608,31 @@
       }
     }
 
+    DTable.prototype.setFilter = function (name, value) {
+      for (let n = this.Thead.firstElementChild.firstElementChild; n; n = n.nextElementSibling) {
+        if (n.getAttribute(names.sortName) === name) {
+          this.displayFilterBox(n).then(input => {
+            input.value = value
+          })
+          return
+        }
+      }
+    }
+
+    DTable.prototype.clearFilter = function (name) {
+      for (let n = this.Thead.firstElementChild.firstElementChild; n; n = n.nextElementSibling) {
+        if (n.getAttribute(names.sortName) === name) {
+          for (let i = n.firstElementChild; i; i = i.nextElementSibling) {
+            if (i.nodeName === 'INPUT') {
+              /* dont really care about type here */
+              this.resetFilter({name: name, type: 'string'}, i)
+              return
+            }
+          }
+        }
+      }
+    }
+
     DTable.prototype.displayFilterBox = function (th) {
       this.mouseClickTimer = null // disable sort
 
@@ -1777,7 +1802,7 @@
         if (th[i].getAttribute(names.classInfo)) {
           classInfo = th[i].getAttribute(names.classInfo)
         }
-        this.Column[i] = {classInfo: classInfo}
+        this.Column[i] = {classInfo: classInfo, type: 'string'}
         if (th[i].getAttribute(names.sortName)) {
           sortName = th[i].getAttribute(names.sortName)
         } else {
