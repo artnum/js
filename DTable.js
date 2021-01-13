@@ -634,50 +634,50 @@
     }
 
     DTable.prototype.displayFilterBox = function (th) {
-      this.mouseClickTimer = null // disable sort
-
-      for (var n = th.firstElementChild; n; n = n.firstElementSibling) {
-        if (n.nodeName === 'INPUT' && n.getAttribute('class') === 'filter') {
-          return
-        }
-      }
-
-      var input = document.createElement('INPUT')
-      input.setAttribute('class', 'filter')
-      input.addEventListener('mousedown', (e) => e.stopPropagation())
-      input.addEventListener('mouseup', (e) => e.stopPropagation())
-      input.addEventListener('keydown', function (event) {
-        switch (event.key) {
-          case 'Tab':
-            this.runFilter(this.prepareFilter(event.target), event.target.value)
-            break
-          case 'Delete':
-          case 'Backspace':
-            let value = event.target.value
-            if (value.substring(value.length - 1) === ' ') {
-              let what = this.prepareFilter(event.target)
-              this.runFilter(what, value.substring(0, value.length - 1))
-            }
-            break
-        }
-      }.bind(this))
-      input.addEventListener('keyup', function (event) {
-        let value = event.target.value
-        let what = this.prepareFilter(event.target)
-        switch (event.key) {
-          case 'Escape':
-            this.resetFilter(what, event.target)
-            break
-          case ' ':
-            value = value.substring(0, value.length - 1)
-            /* Fall through */
-          case 'Enter':
-            this.runFilter(what, value)
-            break
-        }
-      }.bind(this))
-
       return new Promise((resolve, reject) => {
+        this.mouseClickTimer = null // disable sort
+
+        for (var n = th.firstElementChild; n; n = n.firstElementSibling) {
+          if (n.nodeName === 'INPUT' && n.getAttribute('class') === 'filter') {
+            resolve(n)
+            return
+          }
+        }
+
+        var input = document.createElement('INPUT')
+        input.setAttribute('class', 'filter')
+        input.addEventListener('mousedown', (e) => e.stopPropagation())
+        input.addEventListener('mouseup', (e) => e.stopPropagation())
+        input.addEventListener('keydown', function (event) {
+          switch (event.key) {
+            case 'Tab':
+              this.runFilter(this.prepareFilter(event.target), event.target.value)
+              break
+            case 'Delete':
+            case 'Backspace':
+              let value = event.target.value
+              if (value.substring(value.length - 1) === ' ') {
+                let what = this.prepareFilter(event.target)
+                this.runFilter(what, value.substring(0, value.length - 1))
+              }
+              break
+          }
+        }.bind(this))
+        input.addEventListener('keyup', function (event) {
+          let value = event.target.value
+          let what = this.prepareFilter(event.target)
+          switch (event.key) {
+            case 'Escape':
+              this.resetFilter(what, event.target)
+              break
+            case ' ':
+              value = value.substring(0, value.length - 1)
+              /* Fall through */
+            case 'Enter':
+              this.runFilter(what, value)
+              break
+          }
+        }.bind(this))
         window.requestAnimationFrame(() => {
           th.appendChild(input)
           resolve(input)
