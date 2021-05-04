@@ -1295,6 +1295,7 @@
 
     DTable.prototype.processResult = async function (result) {
       if (result.success && result.length > 0) {
+        let pRows = []
         for (var e = 0; e < result.data.length; e++) {
           let entry = result.data[e]
           this.isNewer(entry)
@@ -1384,11 +1385,12 @@
             })
           }
           if (dropRow) { continue }
-          this.row({id: entry[this.EntryId], content: row}).then(() => {
-            this.refreshSort()
-            this.refreshFilter()
-          })
+          pRows.push(this.row({id: entry[this.EntryId], content: row}))
         }
+        Promise.allSettled(pRows).then(_ => {
+          this.refreshSort()
+          this.refreshFilter()
+        })
       }
     }
 
@@ -1430,7 +1432,7 @@
       })
     }
 
-    DTable.prototype.query = function (offset = 0, max = null) {
+    DTable.prototype.query = function (offset = 0, max = null, search = {}) {
       const queryChunk = 1000
       return new Promise((resolve, reject) => {
         var opts = {params: {}}
@@ -1446,16 +1448,23 @@
                 this.searchParams = _opts[k]
             }
           }
+          for (let k in search) {
+            opts.params[k] = search[k]
+            this.searchParams[k] = search[k]
+          }
           opts.params.limit = `${offset},${queryChunk}`
-          Artnum.Query.exec(Artnum.Path.url(this.Table.getAttribute(names.source), opts)).then(function (result) {
-            this.processResult(result)
-            if (parseInt(result.length) > 0 && parseInt(result.length) === queryChunk) {
-              setTimeout(() => { this.query(offset + parseInt(result.length)) }, 50)
-            } else {
-              this.refresh()
-            }
-            resolve()
-          }.bind(this))
+          fetch(Artnum.Path.url(this.Table.getAttribute(names.source), opts)).then(response => {
+            if (!response.ok) { resolve() }
+            response.json().then(result => {
+              this.processResult(result)
+              if (parseInt(result.length) > 0 && parseInt(result.length) === queryChunk) {
+                setTimeout(() => { this.query(offset + parseInt(result.length)) }, 50)
+              } else {
+                this.refresh()
+              }
+              resolve()
+            })
+          })
         }
       })
     }
