@@ -42,7 +42,7 @@
       var zindex = initZindex() - 1
       var div = document.createElement('DIV')
 
-      div.setAttribute('style', `top: 0; bottom: 0; left: 0; width: ${theDoc.doc.width + theDoc.doc.left + 6}; position: fixed; color: white; font-size: 32px; z-index: ${zindex}`)
+      div.setAttribute('style', `top: 0; bottom: 0; left: 0; width: ${theDoc.doc.width + theDoc.doc.left + 6}px; position: fixed; color: white; font-size: 32px; z-index: ${zindex}`)
       div.setAttribute('class', 'docUnderlay')
 
       div.innerHTML = '<div style="position: absolute; right: 5px; top: 5px;"><i class="fas fa-window-close"></i></div>'
