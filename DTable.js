@@ -1006,14 +1006,36 @@
             this.CurrentVal = Math.round((new Date()).getTime() / 1000)
           }
           qparams[params.indicator.parameter] = '>' + String(this.CurrentVal)
-          Artnum.Query.exec(Artnum.Path.url(this.Table.getAttribute(names.source), {params: qparams})).then(async function (result) {
+          const url = Path.url(this.Table.getAttribute(names.source))
+          for(const k of Object.keys(qparams)) {
+            url.searchParams.append(k, qparams[k])
+          }
+          fetch(url)
+          .then(response => {
+            if (!response.ok) { return {success: false}}
+            return response.json()
+          })
+          .then(async function (result) {
             if (result.success && result.length > 0) {
               var data = []
               for (var i = 0; i < result.length; i++) {
                 this.isNewer(result.data[i])
                 var p = this.searchParams
                 p[`search.${this.EntryId}`] = result.data[i][this.EntryId]
-                var x = await Artnum.Query.exec(Artnum.Path.url(this.Table.getAttribute(names.source), {params: p}))
+                const url = Artnum.Path.url(this.Table.getAttribute(names.source))
+                for (const k of Object.keys(p)){
+                  url.searchParams.append(k, p[k])
+                }
+                var x = await new Promise((resolve, reject) => {
+                  fetch(url)
+                  .then(response => {
+                    if (!response.ok) { return {length: 0}}
+                    return response.json()
+                  })
+                  .then(result => {
+                    resolve(result)
+                  })
+                })
                 if (x.length > 0) {
                   data.push(result.data[i])
                 } else {
@@ -1027,7 +1049,12 @@
           }.bind(this))
         }
       } else if (params.absent) {
-        Artnum.Query.exec(Artnum.Path.url(this.Table.getAttribute(names.source))).then(async function (result) {
+        fetch(Artnum.Path.url(this.Table.getAttribute(names.source)))
+        .then(response => {
+          if (!response.ok) { return {data: null} }
+          return response.json()
+        })
+        .then(async function (result) {
           let ids = this.idInTable()
           let newEntries = []
           let oldEntries = []
@@ -1418,7 +1445,16 @@
       if (opts.parameters) {
         delete opts.parameters // don't want we are not searching data 
       }
-      Artnum.Query.exec(Artnum.Path.url(`${this.Table.getAttribute(names.source)}/${id}`, opts)).then(result => {
+      const url = Artnum.Path.url(`${this.Table.getAttribute(names.source)}/${id}`)
+      for (const k of Object.keys(opts.parameters)) {
+        url.searchParams.append(k, opts.parameters[k])
+      }
+      fetch(url)
+      .then(response => {
+        if (!response.ok) { return {length: 0}}
+        return response.json()
+      })
+      .then(result => {
         if (result.length > 0) {
           if (!Array.isArray(result.data)) {
             result.data = [ result.data ]
@@ -1453,7 +1489,8 @@
             this.searchParams[k] = search[k]
           }
           opts.params.limit = `${offset},${queryChunk}`
-          fetch(Artnum.Path.url(this.Table.getAttribute(names.source), opts)).then(response => {
+          fetch(Artnum.Path.url(this.Table.getAttribute(names.source), opts))
+          .then(response => {
             if (!response.ok) { resolve() }
             response.json().then(result => {
               this.processResult(result)
