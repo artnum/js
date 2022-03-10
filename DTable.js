@@ -1035,6 +1035,10 @@
                   .then(result => {
                     resolve(result)
                   })
+                  .catch(reason => {
+                    console.log(reason)
+                    resolve({length: 0})
+                  })
                 })
                 if (x.length > 0) {
                   data.push(result.data[i])
@@ -1047,6 +1051,9 @@
             setTimeout(this.refresh.bind(this), 10000 - (performance.now() - start))
             this.refreshSort()
           }.bind(this))
+          .catch(reason => {
+            console.log(reason)
+          })
         }
       } else if (params.absent) {
         fetch(Artnum.Path.url(this.Table.getAttribute(names.source)))
@@ -1074,9 +1081,14 @@
           if (newEntries.length > 0) {
             this.processResult({success: true, length: newEntries.length, data: newEntries})
           }
+        }.bind(this))
+        .catch(reason => {
+          console.log(reason)
+        })
+        .finally(_ => {
           setTimeout(this.refresh.bind(this), 10000 - (performance.now() - start))
           this.refreshSort()
-        }.bind(this))
+        })
       }
     }
 
@@ -1237,8 +1249,12 @@
         let value = subquery.value
         let outValue = null
         while (value && value.type === 'query') {
-          outValue = await this.subQuery(subquery.value, entries)
-          value = value.value
+          try {
+            outValue = await this.subQuery(subquery.value, entries)
+            value = value.value
+          } catch (reason) {
+            console.log(reason)
+          }
         }
         if (subquery.vars) {
           for (let k in subquery.vars) {
@@ -1264,11 +1280,12 @@
           url = this.URLPrefix + url
         }
 
-        let p = new Promise((resolve, reject) => {
+        const p = new Promise((resolve, reject) => {
           if (CACHE[url]) {
             resolve(CACHE[url])
           } else {
-            fetch(url).then((response) => {
+            fetch(url)
+            .then((response) => {
               if (!response.ok) {
                 CACHE[url] = outValue
                 resolve(firstSubVar)
@@ -1278,6 +1295,9 @@
                 CACHE[url] = results
                 resolve(CACHE[url])
               })
+            })
+            .catch(reason => {
+              reject(reason)
             })
           }
         })
@@ -1316,8 +1336,16 @@
               resolve([retVal, type])
             }
           }
+        })      
+        .catch(reason => {
+          resolve()
+          console.log(reason)
         })
       }.bind(this))
+      .catch(reason => {
+        resolve()
+        console.log(reason)
+      })
     }
 
     DTable.prototype.processResult = async function (result) {
@@ -1363,14 +1391,25 @@
                   break
                 case 'query':
                   entries.push(entry)
-                  value = await this.subQuery(this.Column[i].value[j], entries)
-                  if (value) { 
-                    type = value[1]
-                    value = value[0]
-                    if (this.Column[i].value[j].subclass !== undefined) {
-                      subclass = this.Column[i].value[j].subclass
-                    }
-                  }
+                  await new Promise((resolve) => {
+                    const p = this.subQuery(this.Column[i].value[j], entries)
+                    p.then(value => {
+                      if (value) { 
+                        type = value[1]
+                        value = value[0]
+                        if (this.Column[i].value[j].subclass !== undefined) {
+                          subclass = this.Column[i].value[j].subclass
+                        }
+                      }
+                    })
+                    .catch(reason => {
+                      console.log(reason)
+                    })
+                    .finally(_ => {
+                      resolve()
+                    })
+           
+                  })
                   break
               }
 
@@ -1466,6 +1505,9 @@
           }
         }
       })
+      .catch(reason => {
+        console.log(reason)
+      })
     }
 
     DTable.prototype.query = function (offset = 0, max = null, search = {}) {
@@ -1501,6 +1543,9 @@
               }
               resolve()
             })
+          })
+          .catch(reason => {
+            console.log(reason)
           })
         }
       })
