@@ -1006,7 +1006,7 @@
             this.CurrentVal = Math.round((new Date()).getTime() / 1000)
           }
           qparams[params.indicator.parameter] = '>' + String(this.CurrentVal)
-          const url = Path.url(this.Table.getAttribute(names.source))
+          const url = Artnum.Path.url(this.Table.getAttribute(names.source))
           for(const k of Object.keys(qparams)) {
             url.searchParams.append(k, qparams[k])
           }
