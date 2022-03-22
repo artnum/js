@@ -14,7 +14,6 @@
   var Artnum = global.Artnum
 
   global.Artnum.DTable = (function () {
-    var CACHE = {}
     var ROWS = {}
     var isHTMLElement = function (x) {
       return (typeof HTMLElement === 'object' ? x instanceof HTMLElement : x && typeof x === 'object' && x !== null && x.nodeType === Node.ELEMENT_NODE && typeof x.nodeName === 'string')
@@ -64,7 +63,7 @@
       }
     }
 
-    var timeValue = function (value) {
+    const timeValue = function (value) {
       var v = 0
       if (value.indexOf(':') !== -1) {
         value = value.split(':')
@@ -86,7 +85,7 @@
       return v
     }
 
-    var reOrderDate = function (strDate) {
+    const reOrderDate = function (strDate) {
       const regexp = /([0-9]{1,2})\.([0-9]{1,2})\.([0-9]{2,4})/g
       let m = regexp.exec(strDate)
       if (!m) {
@@ -97,7 +96,7 @@
       return `${m[3]}/${m[2]}/${m[1]}`
     }
 
-    var convertValue = function (value, type, transliterate = null) {
+    const convertValue = function (value, type, transliterate = null) {
       let number = false
       switch (type) {
         case 'bool':
@@ -125,12 +124,7 @@
           break
         case 'date':
           let r = reOrderDate(value)
-          r = dateValue(r, false)
-          if (isNaN(value.getTime())) {
-            value = dateValue(value, false)
-          } else {
-            value = r
-          }
+          value = dateValue(r, false)
           number = true
           break
         case 'datetime':
@@ -146,7 +140,7 @@
       return [value, number]
     }
 
-    var nodeValue = function (node, what, transliterate = null, filter = false) {
+    const nodeValue = function (node, what, transliterate = null, filter = false) {
       if (!node) { return false }
       node = toNode(node, what.name)
       if (!node) { return false }
@@ -162,7 +156,7 @@
       return [...convertValue(value, what.type, transliterate), txtVal]
     }
     
-    var compareNumberNode = function (nodeVal, compareString, type) {
+    const compareNumberNode = function (nodeVal, compareString, type) {
       let trueValue = true
       if (compareString[0] === '!') {
         compareString = compareString.substring(1).trim()
@@ -196,7 +190,7 @@
       } 
     }
 
-    var almostHasValue = function (tr, value, what, translit = null) {
+    const almostHasValue = function (tr, value, what, translit = null) {
       if (!tr) { return false }
       var nodeVal = nodeValue(tr, what, translit, true)
       if (!nodeVal) { return false }
@@ -282,7 +276,7 @@
       return !trueValue
     }
 
-    var cmpNode = function (tr1, tr2, what) {
+    const cmpNode = function (tr1, tr2, what) {
       var direction = what.direction === 'ASC' ? 1 : -1
       let nv1 = nodeValue(tr1, what)
       let nv2 = nodeValue(tr2, what)
@@ -339,13 +333,13 @@
       return v1 > v2 ? direction : -direction
     }
 
-    var swapNode = function (htmlarray, n1, n2) {
+    const swapNode = function (htmlarray, n1, n2) {
       var tmp = htmlarray[n2]
       htmlarray[n2] = htmlarray[n1]
       htmlarray[n1] = tmp
     }
 
-    var siftDown = function (htmlarray, i, max, what) {
+    const siftDown = function (htmlarray, i, max, what) {
       while (i < max) {
         var iBig = i
         var c1 = (2 * i) + 1
@@ -362,7 +356,7 @@
       }
     }
 
-    var sort = function (htmlarray, options) {
+    const sort = function (htmlarray, options) {
       return new Promise(function (resolve, reject) {
         heapSort(htmlarray, options, 0, htmlarray.length, 0)
 
@@ -380,11 +374,12 @@
             }
           }
         }
+
         resolve(htmlarray)
       })
     }
 
-    var heapSort = function (htmlarray, options, offset, length, level) {
+    const heapSort = function (htmlarray, options, offset, length, level) {
       var what = options.what[level]
       var i = Math.floor(length / 2 - 1)
       while (i >= 0) {
@@ -407,7 +402,7 @@
      *  - Use heap sort which is n log n
      *  - After test, heap sort is faster than built-in Array.sort on Chrome and nearly as fast as Firefox's Array.sort
      */
-    var sortHTMLNodes = function (parent, o) {
+    const sortHTMLNodes = function (parent, o) {
       return new Promise(function (res, rej) {
         ;(function () {
           return new Promise(function (resolve, reject) {
@@ -1019,7 +1014,6 @@
             if (result.success && result.length > 0) {
               var data = []
               for (var i = 0; i < result.length; i++) {
-                this.isNewer(result.data[i])
                 var p = this.searchParams
                 p[`search.${this.EntryId}`] = result.data[i][this.EntryId]
                 const url = Artnum.Path.url(this.Table.getAttribute(names.source))
@@ -1280,29 +1274,24 @@
           url = this.URLPrefix + url
         }
 
-        const p = new Promise((resolve, reject) => {
-          if (CACHE[url]) {
-            resolve(CACHE[url])
-          } else {
-            fetch(url)
-            .then((response) => {
-              if (!response.ok) {
-                CACHE[url] = outValue
-                resolve(firstSubVar)
-                return
-              }
-              response.json().then((results) => {
-                CACHE[url] = results
-                resolve(CACHE[url])
-              })
-            })
-            .catch(reason => {
-              reject(reason)
-            })
-          }
+        new Promise((resolve, reject) => {
+          fetch(url)
+          .then((response) => {
+            if (!response.ok) {
+              resolve(firstSubVar)
+              return
+            }
+            return response.json()
+          })
+          .then((results) => {
+            resolve(results)
+          })
+          .catch(reason => {
+            reject(reason)
+          })
+          
         })
-
-        p.then((results) => {
+        .then((results) => {
           let type = 'attr'
           if (!results) { resolve(null); return }
           /* we don't have an object we know, so let it pop back up,
@@ -1311,7 +1300,7 @@
           if (!results.length) { resolve(null); return }
           if (results.length <= 0) { resolve(null); return }
 
-          let entry = Array.isArray(results.data) ? results.data[0] : results.data
+          const entry = Array.isArray(results.data) ? results.data[0] : results.data
           entries.push(entry)
           if (value === null) { resolve(null); return }
           if (value.type !== 'attr') {
@@ -1349,115 +1338,114 @@
     }
 
     DTable.prototype.processResult = async function (result) {
-      if (result.success && result.length > 0) {
-        let pRows = []
-        for (var e = 0; e < result.data.length; e++) {
-          let entry = result.data[e]
-          this.isNewer(entry)
-          let row = []
-          let dropRow = false
-          let substitution = null
-          let subclass = null
-
-          for (let i = 0; i < this.Column.length; i++) {
-            substitution = null
-            subclass = null
-            let valueDescription = null
-            let value = null
-            let syntax = 'string'
-            let entries = [entry]
-            for (let j = 0; j < this.Column[i].value.length; j++) {
-              valueDescription = this.Column[i].value[j]
-              if (this.Column[i].value[j].syntax) {
-                syntax = this.Column[i].value[j].syntax
-              }
-              let type = this.Column[i].value[j].type
-              if (this.Column[i].value[j].substitution !== undefined &&
-                this.Column[i].value[j].substitution !== null) {
-                substitution = this.Column[i].value[j].substitution
-              }
-              switch (this.Column[i].value[j].type) {
-                case 'string':
-                  value = this.Column[i].value[j].value
-                  if (this.Column[i].value[j].subclass !== undefined) {
-                    subclass = this.Column[i].value[j].subclass
-                  }
-                  break
-                case 'attr':
-                  value = walkValueTree(entry, this.Column[i].value[j].value)
-                  if (this.Column[i].value[j].subclass !== undefined) {
-                    subclass = this.Column[i].value[j].subclass
-                  }
-                  break
-                case 'query':
-                  entries.push(entry)
-                  await new Promise((resolve) => {
-                    const p = this.subQuery(this.Column[i].value[j], entries)
-                    p.then(value => {
-                      if (value) { 
-                        type = value[1]
-                        value = value[0]
-                        if (this.Column[i].value[j].subclass !== undefined) {
-                          subclass = this.Column[i].value[j].subclass
-                        }
+      if (result.length <= 0) { return }
+      const pRows = []
+      for (const entry of result.data) {
+        const row = []
+        let dropRow = false
+        let substitution = null
+        let subclass = null
+        let value = null
+        let valueDescription = null
+        let syntax = 'string'
+        for (let i = 0; i < this.Column.length; i++) {
+          substitution = null
+          subclass = null
+          substitution = null
+          subclass = null
+          value = null
+          valueDescription = null
+          syntax = 'string'
+          const entries = [entry]
+          for (let j = 0; j < this.Column[i].value.length; j++) {
+            valueDescription = this.Column[i].value[j]
+            if (this.Column[i].value[j].syntax) {
+              syntax = this.Column[i].value[j].syntax
+            }
+            var type = this.Column[i].value[j].type
+            if (this.Column[i].value[j].substitution !== undefined &&
+              this.Column[i].value[j].substitution !== null) {
+              substitution = this.Column[i].value[j].substitution
+            }
+            switch (this.Column[i].value[j].type) {
+              case 'string':
+                value = this.Column[i].value[j].value
+                if (this.Column[i].value[j].subclass !== undefined) {
+                  subclass = this.Column[i].value[j].subclass
+                }
+                break
+              case 'attr':
+                value = walkValueTree(entry, this.Column[i].value[j].value)
+                if (this.Column[i].value[j].subclass !== undefined) {
+                  subclass = this.Column[i].value[j].subclass
+                }
+                break
+              case 'query':
+                entries.push(entry)
+                await new Promise((resolve) => {
+                  this.subQuery(this.Column[i].value[j], entries)
+                  .then(v => {
+                    if (v) { 
+                      type = v[1]
+                      value = v[0]
+                      if (this.Column[i].value[j].subclass !== undefined) {
+                        subclass = this.Column[i].value[j].subclass
                       }
-                    })
-                    .catch(reason => {
-                      console.log(reason)
-                    })
-                    .finally(_ => {
-                      resolve()
-                    })
-           
+                    }
                   })
-                  break
-              }
-
-              if (this.Column[i].value[j].condition) {
-                dropRow = !checkCondition(value, this.Column[i].value[j])
-                if (dropRow) { break }
-              }
-              /* first non-null value do the trick */
-              if (value !== null && type === 'attr') { break }
+                  .catch(reason => {
+                    console.log(reason)
+                  })
+                  .finally(_ => {
+                    resolve()
+                  })
+                })
+                break
             }
-            if (dropRow) {
-              this.dropRow(entry[this.EntryId])
-              break
+            if (this.Column[i].value[j].condition) {
+              dropRow = !checkCondition(value, this.Column[i].value[j])
+              if (dropRow) { break }
             }
-            let sortValue = null
-            if (this.Column[i].process) {
-              [value, sortValue] = await this.Column[i].process(value, entries)
-              if (sortValue === null) {
-                sortValue = value
-              }
-            } else {
+            /* first non-null value do the trick */
+            if (value !== null && type === 'attr') { break }
+          }
+          if (dropRow) {
+            this.dropRow(entry[this.EntryId])
+            break
+          }
+          let sortValue = null
+          if (this.Column[i].process) {
+            [value, sortValue] = await this.Column[i].process(value, entries)
+            if (sortValue === null) {
               sortValue = value
             }
-
-            if (substitution !== null) {
-              if (substitution[value] !== undefined) {
-                value = substitution[value]
-              }
-            }
-
-            row.push({
-              value: value,
-              valueDescription: valueDescription,
-              sortValue: sortValue,
-              type: syntax,
-              entries: entries,
-              sortName: this.Column[i].sortName,
-              classInfo: `${this.Column[i].classInfo}${subclass === null ? '' : ' ' + subclass}`
-            })
+          } else {
+            sortValue = value
           }
-          if (dropRow) { continue }
-          pRows.push(this.row({id: entry[this.EntryId], content: row}))
+
+          if (substitution !== null) {
+            if (substitution[value] !== undefined) {
+              value = substitution[value]
+            }
+          }
+          row.push({
+            value: value,
+            valueDescription: valueDescription,
+            sortValue: sortValue,
+            type: syntax,
+            entries: entries,
+            sortName: this.Column[i].sortName,
+            classInfo: `${this.Column[i].classInfo}${subclass === null ? '' : ' ' + subclass}`
+          })
         }
-        Promise.allSettled(pRows).then(_ => {
-          this.refreshSort()
-          this.refreshFilter()
-        })
+        if (dropRow) { continue }
+        pRows.push(this.row({id: entry[this.EntryId], content: row}))
       }
+      Promise.allSettled(pRows)
+      .then(_ => {
+        this.refreshSort()
+        this.refreshFilter()
+      })
     }
 
     DTable.prototype.getQueryOpts = function () {
