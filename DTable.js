@@ -1253,9 +1253,9 @@
         if (subquery.vars) {
           for (let k in subquery.vars) {
             let subvar = null
-            let i = 0
-            while (subvar === null && i < entries.length) {
-              subvar = walkValueTree(entries[i++], subquery.vars[k])
+            let i = entries.length - 1
+            while (subvar === null && i >= 0) {
+              subvar = walkValueTree(entries[i--], subquery.vars[k])
               if (subvar && !firstSubVar) { firstSubVar = subvar }
             }
             if (subvar === null) {
